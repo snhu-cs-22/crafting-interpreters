@@ -4,7 +4,7 @@ use lazy_static::lazy_static;
 use substring::Substring;
 
 use super::error;
-use crate::token::{Token, TokenType, Literal};
+use crate::token::{Literal, Token, TokenType};
 
 pub struct Scanner<'a> {
     source: &'a str,
@@ -74,21 +74,37 @@ impl Scanner<'_> {
             ';' => self.add_token(TokenType::Semicolon),
             '*' => self.add_token(TokenType::Star),
             '!' => {
-                let r#type = if self.matches('=') { TokenType::BangEqual } else { TokenType::Bang };
+                let r#type = if self.matches('=') {
+                    TokenType::BangEqual
+                } else {
+                    TokenType::Bang
+                };
                 self.add_token(r#type);
-            },
+            }
             '=' => {
-                let r#type = if self.matches('=') { TokenType::EqualEqual } else { TokenType::Equal };
+                let r#type = if self.matches('=') {
+                    TokenType::EqualEqual
+                } else {
+                    TokenType::Equal
+                };
                 self.add_token(r#type);
-            },
+            }
             '<' => {
-                let r#type = if self.matches('=') { TokenType::LessEqual } else { TokenType::Less };
+                let r#type = if self.matches('=') {
+                    TokenType::LessEqual
+                } else {
+                    TokenType::Less
+                };
                 self.add_token(r#type);
-            },
+            }
             '>' => {
-                let r#type = if self.matches('=') { TokenType::GreaterEqual } else { TokenType::Greater };
+                let r#type = if self.matches('=') {
+                    TokenType::GreaterEqual
+                } else {
+                    TokenType::Greater
+                };
                 self.add_token(r#type);
-            },
+            }
             // TODO: Implement C-style multi-line comments (/* ... */)
             '/' => {
                 if self.matches('/') {
@@ -139,7 +155,12 @@ impl Scanner<'_> {
 
         self.add_token_with_literal(
             TokenType::Number,
-            Literal::Number(self.source.substring(self.start, self.current).parse().unwrap())
+            Literal::Number(
+                self.source
+                    .substring(self.start, self.current)
+                    .parse()
+                    .unwrap(),
+            ),
         );
     }
 
