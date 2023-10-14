@@ -105,12 +105,13 @@ impl Scanner<'_> {
                 };
                 self.add_token(r#type);
             }
-            // TODO: Implement C-style multi-line comments (/* ... */)
             '/' => {
                 if self.matches('/') {
                     while self.peek() != '\n' && !self.is_at_end() {
                         self.advance();
                     }
+                } else if self.matches('*') {
+                    self.multi_line_comment()
                 } else {
                     self.add_token(TokenType::Slash);
                 }
@@ -162,6 +163,19 @@ impl Scanner<'_> {
                     .unwrap(),
             ),
         );
+    }
+
+    fn multi_line_comment(&mut self) {
+        while self.peek() != '*' && self.peek_next() != '/' && !self.is_at_end() {
+            if self.peek() == '\n' {
+                self.line += 1;
+            }
+            self.advance();
+        }
+
+        // The closing "*/"
+        self.advance();
+        self.advance();
     }
 
     fn string(&mut self) {
