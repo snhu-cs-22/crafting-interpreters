@@ -17,6 +17,8 @@ pub fn run_prompt() {
     let input = io::stdin();
     let mut reader = BufReader::new(input);
 
+    println!("Lox Interactive REPL\n");
+
     loop {
         print!("> ");
         let mut line = String::new();
