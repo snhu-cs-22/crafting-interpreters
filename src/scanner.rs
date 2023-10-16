@@ -6,9 +6,9 @@ use substring::Substring;
 use super::error;
 use crate::token::{Literal, Token, TokenType};
 
-pub struct Scanner<'a> {
-    source: &'a str,
-    tokens: Vec<Token<'a>>,
+pub struct Scanner {
+    source: Box<str>,
+    tokens: Vec<Token>,
     start: usize,
     current: usize,
     line: u32,
@@ -37,10 +37,10 @@ lazy_static! {
     };
 }
 
-impl Scanner<'_> {
+impl Scanner {
     pub fn new(source: &str) -> Scanner {
         Scanner {
-            source,
+            source: source.into(),
             tokens: Vec::new(),
             start: 0,
             current: 0,

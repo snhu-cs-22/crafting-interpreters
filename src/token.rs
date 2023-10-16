@@ -50,25 +50,25 @@ pub enum TokenType {
 }
 
 #[derive(Debug)]
-pub struct Token<'a> {
+pub struct Token {
     r#type: TokenType,
-    lexeme: &'a str,
+    lexeme: Box<str>,
     literal: Literal,
     line: u32,
 }
 
-impl Token<'_> {
+impl Token {
     pub fn new(r#type: TokenType, lexeme: &str, literal: Literal, line: u32) -> Token {
         Token {
             r#type,
-            lexeme,
+            lexeme: lexeme.into(),
             literal,
             line,
         }
     }
 }
 
-impl std::fmt::Display for Token<'_> {
+impl std::fmt::Display for Token {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
         write!(f, "{:?} {} {:?}", self.r#type, self.lexeme, self.literal)
     }
