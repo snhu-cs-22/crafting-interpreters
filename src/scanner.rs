@@ -166,7 +166,17 @@ impl Scanner {
     }
 
     fn multi_line_comment(&mut self) {
-        while self.peek() != '*' && self.peek_next() != '/' && !self.is_at_end() {
+        let mut comment_nest_depth = 1;
+
+        while comment_nest_depth > 0 && !self.is_at_end() {
+            if self.peek() == '/' && self.peek_next() == '*' {
+                comment_nest_depth += 1;
+            }
+
+            if self.peek() == '*' && self.peek_next() == '/' {
+                comment_nest_depth -= 1;
+            }
+
             if self.peek() == '\n' {
                 self.line += 1;
             }
