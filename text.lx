@@ -1,3 +1,13 @@
 /* This is
 a multi-line comment */
-print "Hello world!";
+
+/* This is
+	/* a nested */
+		/* multi-line comment */
+*/ 
+
+var message = "Hello world!";
+print message;
+
+var number = 42;
+print number;
