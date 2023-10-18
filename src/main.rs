@@ -7,7 +7,7 @@ fn main() -> ExitCode {
 
     match args.len() {
         1 => run_prompt(),
-        2 => run_file(&args[0]),
+        2 => run_file(&args[1]),
         _ => {
             println!("Usage: jlox [script]");
             return ExitCode::from(64);

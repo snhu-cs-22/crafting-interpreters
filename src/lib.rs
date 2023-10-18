@@ -8,7 +8,6 @@ use std::io::{self, BufReader};
 use scanner::Scanner;
 
 pub fn run_file(path: &str) {
-    // TODO: figure out why I can't read text files
     let bytes = fs::read_to_string(path).unwrap();
     run(&bytes);
 }
