@@ -20,6 +20,7 @@ pub fn run_prompt() {
 
     loop {
         print!("> ");
+        io::stdout().flush().unwrap();
         let mut line = String::new();
         reader.read_line(&mut line);
         run(&line);
