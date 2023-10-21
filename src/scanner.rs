@@ -3,8 +3,12 @@ use std::collections::HashMap;
 use lazy_static::lazy_static;
 use substring::Substring;
 
-use super::error;
+use super::report;
 use crate::token::{Literal, Token, TokenType};
+
+fn error(line: u32, message: &str) {
+    report(line, "", message);
+}
 
 pub struct Scanner {
     source: Box<str>,
@@ -48,7 +52,7 @@ impl Scanner {
         }
     }
 
-    pub fn scan_tokens(&mut self) -> &Vec<Token> {
+    pub fn scan_tokens(&mut self) -> Vec<Token> {
         while !self.is_at_end() {
             // We are at the beginning of the next lexeme.
             self.start = self.current;
@@ -57,7 +61,7 @@ impl Scanner {
 
         self.tokens
             .push(Token::new(TokenType::Eof, "", Literal::None, self.line));
-        &self.tokens
+        self.tokens.clone()
     }
 
     fn scan_token(&mut self) {

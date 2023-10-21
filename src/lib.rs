@@ -1,3 +1,5 @@
+mod expr;
+mod parser;
 mod scanner;
 mod token;
 
@@ -5,6 +7,7 @@ use std::fs;
 use std::io::prelude::*;
 use std::io::{self, BufReader};
 
+use parser::Parser;
 use scanner::Scanner;
 
 pub fn run_file(path: &str) {
@@ -30,15 +33,10 @@ pub fn run_prompt() {
 fn run(source: &str) {
     let mut scanner = Scanner::new(source);
     let tokens = scanner.scan_tokens();
+    let mut parser = Parser::new(tokens);
+    let expression = parser.parse();
 
-    // For now, just print the tokens.
-    for token in tokens {
-        println!("{}", token);
-    }
-}
-
-fn error(line: u32, message: &str) {
-    report(line, "", message);
+    println!("{:#?}", expression);
 }
 
 fn report(line: u32, location: &str, message: &str) {

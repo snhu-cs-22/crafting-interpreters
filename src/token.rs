@@ -1,4 +1,7 @@
-#[derive(Debug, Clone, Copy)]
+// TODO: Implement C-style comma operator
+// TODO: Implement C-style ternary operator ("?:"). What precedence level is allowed between the ?
+// and :? Is the whole operator left-associative or right-associative?
+#[derive(Debug, Clone, Copy, PartialEq)]
 pub enum TokenType {
     // Single-character tokens.
     LeftParen,
@@ -49,12 +52,12 @@ pub enum TokenType {
     Eof,
 }
 
-#[derive(Debug)]
+#[derive(Debug, Clone)]
 pub struct Token {
-    r#type: TokenType,
-    lexeme: Box<str>,
-    literal: Literal,
-    line: u32,
+    pub r#type: TokenType,
+    pub lexeme: Box<str>,
+    pub literal: Literal,
+    pub line: u32,
 }
 
 impl Token {
