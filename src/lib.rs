@@ -1,4 +1,5 @@
 mod expr;
+mod interpreter;
 mod parser;
 mod scanner;
 mod token;
@@ -7,6 +8,7 @@ use std::fs;
 use std::io::prelude::*;
 use std::io::{self, BufReader};
 
+use interpreter::Interpreter;
 use parser::Parser;
 use scanner::Scanner;
 
@@ -34,9 +36,10 @@ fn run(source: &str) {
     let mut scanner = Scanner::new(source);
     let tokens = scanner.scan_tokens();
     let mut parser = Parser::new(tokens);
-    let expression = parser.parse();
+    let expression = parser.parse().unwrap();
+    let interpreter = Interpreter;
 
-    println!("{:#?}", expression);
+    interpreter.interpret(&expression);
 }
 
 fn report(line: u32, location: &str, message: &str) {
