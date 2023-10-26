@@ -60,6 +60,9 @@ impl Parser {
     }
 
     fn statement(&mut self) -> ParseResult<Stmt> {
+        if self.matches(&[TokenType::If]) {
+            return self.if_statement();
+        }
         if self.matches(&[TokenType::Print]) {
             return self.print_statement();
         }
@@ -67,6 +70,21 @@ impl Parser {
             return Ok(Stmt::Block(self.block()?));
         }
         self.expression_statement()
+    }
+
+    fn if_statement(&mut self) -> ParseResult<Stmt> {
+        self.consume(TokenType::LeftParen, "Expect '(' after \"if\".")?;
+        let condition = self.expression().unwrap();
+        self.consume(TokenType::RightParen, "Expect ')' after if condition.")?;
+
+        let then_branch = self.statement()?;
+        let else_branch = if self.matches(&[TokenType::Else]) {
+            Some(self.statement()?.into())
+        } else {
+            None
+        };
+
+        Ok(Stmt::If(condition.into(), then_branch.into(), else_branch))
     }
 
     fn print_statement(&mut self) -> ParseResult<Stmt> {
@@ -112,7 +130,7 @@ impl Parser {
     }
 
     fn assignment(&mut self) -> Expr {
-        let expr = self.equality();
+        let expr = self.or();
 
         if self.matches(&[TokenType::Equal]) {
             // TODO: Remove clone
@@ -126,6 +144,32 @@ impl Parser {
                 // into panic mode and synchronize.
                 _ => self.error(&equals, "Invalid assignment target."),
             };
+        }
+
+        expr
+    }
+
+    fn or(&mut self) -> Expr {
+        let mut expr = self.and();
+
+        while self.matches(&[TokenType::Or]) {
+            // TODO: Remove clone
+            let operator = self.previous().clone();
+            let right = self.and();
+            expr = Expr::Logical(expr.into(), operator, right.into());
+        }
+
+        expr
+    }
+
+    fn and(&mut self) -> Expr {
+        let mut expr = self.equality();
+
+        while self.matches(&[TokenType::And]) {
+            // TODO: Remove clone
+            let operator = self.previous().clone();
+            let right = self.equality();
+            expr = Expr::Logical(expr.into(), operator, right.into());
         }
 
         expr

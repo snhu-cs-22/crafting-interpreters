@@ -32,6 +32,15 @@ impl Interpreter {
                 Stmt::Expression(expr) => {
                     self.evaluate(expr)?;
                 }
+                Stmt::If(condition, then_branch, else_branch) => {
+                    let condition = &self.evaluate(condition)?;
+                    // TODO: Remove clone
+                    if self.is_truthy(condition) {
+                        self.interpret(&[*then_branch.clone()])?;
+                    } else if let Some(else_branch) = else_branch {
+                        self.interpret(&[*else_branch.clone()])?;
+                    }
+                }
                 Stmt::Var(name, initializer) => {
                     let value = match initializer {
                         Some(init_expression) => self.evaluate(&init_expression)?,
@@ -127,6 +136,21 @@ impl Interpreter {
             Expr::Grouping(expr) => self.evaluate(expr),
             // TODO: Remove clone
             Expr::Literal(literal) => Ok(literal.clone()),
+            Expr::Logical(left, operator, right) => {
+                let left = self.evaluate(left)?;
+
+                if operator.r#type == TokenType::Or {
+                    if self.is_truthy(&left) {
+                        return Ok(left.clone());
+                    }
+                } else {
+                    if !self.is_truthy(&left) {
+                        return Ok(left.clone());
+                    }
+                }
+
+                self.evaluate(right)
+            },
             Expr::Unary(operator, right) => {
                 let right = self.evaluate(right)?;
 
@@ -135,7 +159,7 @@ impl Interpreter {
                         let right = self.check_number_operand(operator, right)?;
                         Ok(Literal::Number(-right))
                     }
-                    TokenType::Bang => Ok(Literal::Bool(!self.is_truthy(right))),
+                    TokenType::Bang => Ok(Literal::Bool(!self.is_truthy(&right))),
                     _ => todo!(),
                 }
             }
@@ -179,9 +203,9 @@ impl Interpreter {
         }
     }
 
-    fn is_truthy(&self, literal: Literal) -> bool {
+    fn is_truthy(&self, literal: &Literal) -> bool {
         match literal {
-            Literal::Bool(value) => value,
+            Literal::Bool(value) => *value,
             Literal::Nil => false,
             _ => true,
         }
