@@ -1,7 +1,9 @@
+mod environment;
 mod expr;
 mod interpreter;
 mod parser;
 mod scanner;
+mod stmt;
 mod token;
 
 use std::fs;
@@ -17,6 +19,7 @@ pub fn run_file(path: &str) {
     run(&bytes);
 }
 
+// TODO: Fix this
 pub fn run_prompt() {
     let input = io::stdin();
     let mut reader = BufReader::new(input);
@@ -36,10 +39,10 @@ fn run(source: &str) {
     let mut scanner = Scanner::new(source);
     let tokens = scanner.scan_tokens();
     let mut parser = Parser::new(tokens);
-    let expression = parser.parse().unwrap();
-    let interpreter = Interpreter;
+    let statements = parser.parse();
+    let mut interpreter: Interpreter = Default::default();
 
-    interpreter.interpret(&expression);
+    interpreter.interpret(&statements);
 }
 
 fn report(line: u32, location: &str, message: &str) {

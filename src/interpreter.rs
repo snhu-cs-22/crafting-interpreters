@@ -1,7 +1,11 @@
+use std::mem;
+
 use substring::Substring;
 
 use super::report;
+use crate::environment::Environment;
 use crate::expr::Expr;
+use crate::stmt::Stmt;
 use crate::token::{Literal, Token, TokenType};
 
 fn error(token: &Token, message: &str) {
@@ -10,15 +14,44 @@ fn error(token: &Token, message: &str) {
 
 pub struct RuntimeError;
 
-pub struct Interpreter;
+pub type RuntimeResult<T> = Result<T, RuntimeError>;
+
+#[derive(Default)]
+pub struct Interpreter {
+    environment: Environment,
+}
 
 impl Interpreter {
-    pub fn interpret(&self, expression: &Expr) -> Result<(), RuntimeError> {
-        println!("{}", self.stringify(self.evaluate(expression)?));
+    pub fn interpret(&mut self, statements: &[Stmt]) -> RuntimeResult<()> {
+        for statement in statements {
+            match statement {
+                Stmt::Print(value) => {
+                    let value = self.evaluate(value)?;
+                    println!("{}", self.stringify(value))
+                }
+                Stmt::Expression(expr) => {
+                    self.evaluate(expr)?;
+                }
+                Stmt::Var(name, initializer) => {
+                    let value = match initializer {
+                        Some(init_expression) => self.evaluate(&init_expression)?,
+                        None => Literal::Nil,
+                    };
+
+                    self.environment.define(&name.lexeme, value);
+                }
+                Stmt::Block(statements) => {
+                    // TODO: Remove clone
+                    // This whole changing of environments could be done better (this
+                    // *is* basically a stack at the moment).
+                    self.execute_block(statements, Environment::new(self.environment.clone()))?;
+                }
+            }
+        }
         Ok(())
     }
 
-    fn evaluate(&self, expr: &Expr) -> Result<Literal, RuntimeError> {
+    fn evaluate(&mut self, expr: &Expr) -> RuntimeResult<Literal> {
         match expr {
             Expr::Binary(left, operator, right) => {
                 let left = self.evaluate(left)?;
@@ -106,7 +139,25 @@ impl Interpreter {
                     _ => todo!(),
                 }
             }
+            Expr::Variable(name) => self.environment.get(name),
+            Expr::Assign(name, value) => {
+                let value = self.evaluate(value)?;
+                // TODO: Remove clone
+                self.environment.assign(name, value.clone())?;
+                Ok(value)
+            }
         }
+    }
+
+    pub fn execute_block(
+        &mut self,
+        statements: &[Stmt],
+        environment: Environment,
+    ) -> RuntimeResult<()> {
+        let mut previous = mem::replace(&mut self.environment, environment);
+        let result = self.interpret(statements);
+        self.environment = mem::take(&mut previous);
+        result
     }
 
     fn check_number_operands(
@@ -114,18 +165,14 @@ impl Interpreter {
         operator: &Token,
         left: Literal,
         right: Literal,
-    ) -> Result<(f64, f64), RuntimeError> {
+    ) -> RuntimeResult<(f64, f64)> {
         match (left, right) {
             (Literal::Number(left), Literal::Number(right)) => Ok((left, right)),
             (_, _) => Err(self.error(operator, "Operands must be numbers.")),
         }
     }
 
-    fn check_number_operand(
-        &self,
-        operator: &Token,
-        operand: Literal,
-    ) -> Result<f64, RuntimeError> {
+    fn check_number_operand(&self, operator: &Token, operand: Literal) -> RuntimeResult<f64> {
         match operand {
             Literal::Number(value) => Ok(value),
             _ => Err(self.error(operator, "Operand must be a number.")),
