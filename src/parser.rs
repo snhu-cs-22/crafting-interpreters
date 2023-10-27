@@ -60,16 +60,67 @@ impl Parser {
     }
 
     fn statement(&mut self) -> ParseResult<Stmt> {
+        if self.matches(&[TokenType::For]) {
+            return self.for_statement();
+        }
         if self.matches(&[TokenType::If]) {
             return self.if_statement();
         }
         if self.matches(&[TokenType::Print]) {
             return self.print_statement();
         }
+        if self.matches(&[TokenType::While]) {
+            return self.while_statement();
+        }
         if self.matches(&[TokenType::LeftBrace]) {
             return Ok(Stmt::Block(self.block()?));
         }
         self.expression_statement()
+    }
+
+    fn for_statement(&mut self) -> ParseResult<Stmt> {
+        self.consume(TokenType::LeftParen, "Expect '(' after \"for\".")?;
+
+        let initializer = if self.matches(&[TokenType::Semicolon]) {
+            None
+        } else if self.matches(&[TokenType::Var]) {
+            Some(self.var_declaration()?)
+        } else {
+            Some(self.expression_statement()?)
+        };
+
+        let condition = if !self.check(&TokenType::Semicolon) {
+            self.expression()
+        } else {
+            None
+        };
+        self.consume(TokenType::Semicolon, "Expect ';' after loop condition.")?;
+
+        let increment = if !self.check(&TokenType::RightParen) {
+            self.expression()
+        } else {
+            None
+        };
+        self.consume(TokenType::RightParen, "Expect ')' after for clauses.")?;
+
+        let mut body = self.statement()?;
+
+        if let Some(increment) = increment {
+            body = Stmt::Block(vec![body, Stmt::Expression(increment.into())]);
+        }
+
+        body = Stmt::While(
+            condition
+                .unwrap_or(Expr::Literal(Literal::Bool(true)))
+                .into(),
+            body.into(),
+        );
+
+        if let Some(initializer) = initializer {
+            body = Stmt::Block(vec![initializer, body]);
+        }
+
+        Ok(body)
     }
 
     fn if_statement(&mut self) -> ParseResult<Stmt> {
@@ -110,6 +161,15 @@ impl Parser {
         )?;
 
         Ok(Stmt::Var(name, initializer))
+    }
+
+    fn while_statement(&mut self) -> ParseResult<Stmt> {
+        self.consume(TokenType::LeftParen, "Expect '(' after \"while\".")?;
+        let condition = self.expression().unwrap();
+        self.consume(TokenType::RightParen, "Expect ')' after condition.")?;
+        let body = self.statement()?;
+
+        Ok(Stmt::While(condition.into(), body.into()))
     }
 
     fn expression_statement(&mut self) -> ParseResult<Stmt> {

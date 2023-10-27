@@ -8,4 +8,5 @@ pub enum Stmt {
     Expression(Box<Expr>),
     Print(Box<Expr>),
     Var(Token, Option<Box<Expr>>),
+    While(Box<Expr>, Box<Stmt>),
 }

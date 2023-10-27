@@ -49,11 +49,32 @@ impl Interpreter {
 
                     self.environment.define(&name.lexeme, value);
                 }
+                Stmt::While(condition, body) => {
+                    // TODO: Implement `break` statements:
+                    //
+                    // The syntax is a break keyword followed by a semicolon. It should
+                    // be a syntax error to have a break statement appear outside of any
+                    // enclosing loop. At runtime, a break statement causes execution to
+                    // jump to the end of the nearest enclosing loop and proceeds from
+                    // there. Note that the break may be nested inside other blocks and
+                    // if statements that also need to be exited.
+                    let mut condition_value = self.evaluate(condition)?;
+                    while self.is_truthy(&condition_value) {
+                        self.interpret(&[*body.clone()])?;
+
+                        condition_value = self.evaluate(condition)?;
+                    }
+                }
                 Stmt::Block(statements) => {
-                    // TODO: Remove clone
-                    // This whole changing of environments could be done better (this
-                    // *is* basically a stack at the moment).
-                    self.execute_block(statements, Environment::new(self.environment.clone()))?;
+                    // All the mem operations make things look complicated, but all this
+                    // is doing is pushing a new environment onto a "environment stack,"
+                    // which takes ownership of the previous environment, runs the block
+                    // under the new environment, and puts the old environment back when
+                    // it's done.
+                    let mut new_environment = Environment::new(mem::take(&mut self.environment));
+                    mem::swap(&mut self.environment, &mut new_environment);
+                    self.interpret(statements)?;
+                    self.environment = mem::take(&mut self.environment.enclosing.as_mut().unwrap());
                 }
             }
         }
@@ -150,7 +171,7 @@ impl Interpreter {
                 }
 
                 self.evaluate(right)
-            },
+            }
             Expr::Unary(operator, right) => {
                 let right = self.evaluate(right)?;
 
@@ -171,17 +192,6 @@ impl Interpreter {
                 Ok(value)
             }
         }
-    }
-
-    pub fn execute_block(
-        &mut self,
-        statements: &[Stmt],
-        environment: Environment,
-    ) -> RuntimeResult<()> {
-        let mut previous = mem::replace(&mut self.environment, environment);
-        let result = self.interpret(statements);
-        self.environment = mem::take(&mut previous);
-        result
     }
 
     fn check_number_operands(
