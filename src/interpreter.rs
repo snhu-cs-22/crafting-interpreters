@@ -234,7 +234,7 @@ impl Interpreter {
 
     fn stringify(&self, literal: Literal) -> Box<str> {
         match literal {
-            Literal::Nil | Literal::None => "nil".into(),
+            Literal::Nil => "nil".into(),
             Literal::String(value) => format!("\"{}\"", value).into(),
             Literal::Number(value) => {
                 let mut text = value.to_string();

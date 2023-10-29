@@ -79,9 +79,8 @@ impl std::fmt::Display for Token {
 
 #[derive(Debug, Clone, PartialEq)]
 pub enum Literal {
-    None,
+    Nil,
     String(Box<str>),
     Number(f64),
     Bool(bool),
-    Nil,
 }
