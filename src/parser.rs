@@ -48,9 +48,8 @@ impl Parser {
         statements
     }
 
-    fn expression(&mut self) -> Option<Expr> {
-        // TODO: Decide whether the `Option` return is necessary
-        Some(self.assignment())
+    fn expression(&mut self) -> ParseResult<Expr> {
+        self.assignment()
     }
 
     fn declaration(&mut self) -> Option<Stmt> {
@@ -98,14 +97,14 @@ impl Parser {
         };
 
         let condition = if !self.check(&TokenType::Semicolon) {
-            self.expression()
+            Some(self.expression()?)
         } else {
             None
         };
         self.consume(TokenType::Semicolon, "Expect ';' after loop condition.")?;
 
         let increment = if !self.check(&TokenType::RightParen) {
-            self.expression()
+            Some(self.expression()?)
         } else {
             None
         };
@@ -133,7 +132,7 @@ impl Parser {
 
     fn if_statement(&mut self) -> ParseResult<Stmt> {
         self.consume(TokenType::LeftParen, "Expect '(' after \"if\".")?;
-        let condition = self.expression().unwrap();
+        let condition = self.expression()?;
         self.consume(TokenType::RightParen, "Expect ')' after if condition.")?;
 
         let then_branch = self.statement()?;
@@ -147,7 +146,7 @@ impl Parser {
     }
 
     fn print_statement(&mut self) -> ParseResult<Stmt> {
-        let value = self.expression().unwrap();
+        let value = self.expression()?;
         self.consume(TokenType::Semicolon, "Expect ';' after value.")?;
         Ok(Stmt::Print(value.into()))
     }
@@ -158,10 +157,11 @@ impl Parser {
             .consume(TokenType::Identifier, "Expect variable name.")?
             .clone();
 
-        let mut initializer = None;
-        if self.matches(&[TokenType::Equal]) {
-            initializer = self.expression().map(|expr| expr.into());
-        }
+        let initializer = if self.matches(&[TokenType::Equal]) {
+            Some(self.expression()?.into())
+        } else {
+            None
+        };
 
         self.consume(
             TokenType::Semicolon,
@@ -173,7 +173,7 @@ impl Parser {
 
     fn while_statement(&mut self) -> ParseResult<Stmt> {
         self.consume(TokenType::LeftParen, "Expect '(' after \"while\".")?;
-        let condition = self.expression().unwrap();
+        let condition = self.expression()?;
         self.consume(TokenType::RightParen, "Expect ')' after condition.")?;
         let body = self.statement()?;
 
@@ -181,7 +181,7 @@ impl Parser {
     }
 
     fn expression_statement(&mut self) -> ParseResult<Stmt> {
-        let expr = self.expression().unwrap();
+        let expr = self.expression()?;
         self.consume(TokenType::Semicolon, "Expect ';' after expression.")?;
         Ok(Stmt::Expression(expr.into()))
     }
@@ -199,16 +199,16 @@ impl Parser {
         Ok(statements)
     }
 
-    fn assignment(&mut self) -> Expr {
-        let expr = self.ternary();
+    fn assignment(&mut self) -> ParseResult<Expr> {
+        let expr = self.ternary()?;
 
         if self.matches(&[TokenType::Equal]) {
             // TODO: Remove clone
             let equals = self.previous().clone();
-            let value = self.assignment();
+            let value = self.assignment()?;
 
             match expr {
-                Expr::Variable(name) => return Expr::Assign(name, value.into()),
+                Expr::Variable(name) => return Ok(Expr::Assign(name, value.into())),
                 // We report an error if the left-hand side isn’t a valid assignment target, but we
                 // don’t throw it because the parser isn’t in a confused state where we need to go
                 // into panic mode and synchronize.
@@ -216,19 +216,19 @@ impl Parser {
             };
         }
 
-        expr
+        Ok(expr)
     }
 
-    fn ternary(&mut self) -> Expr {
-        let mut expr = self.or();
+    fn ternary(&mut self) -> ParseResult<Expr> {
+        let mut expr = self.or()?;
 
         while self.matches(&[TokenType::QuestionMark]) {
             let operator_1 = self.previous().clone();
-            let middle = self.ternary();
+            let middle = self.ternary()?;
 
             if self.matches(&[TokenType::Colon]) {
                 let operator_2 = self.previous().clone();
-                let right = self.ternary();
+                let right = self.ternary()?;
                 expr = Expr::Ternary(
                     expr.into(),
                     operator_1,
@@ -239,49 +239,49 @@ impl Parser {
             }
         }
 
-        expr
+        Ok(expr)
     }
 
-    fn or(&mut self) -> Expr {
-        let mut expr = self.and();
+    fn or(&mut self) -> ParseResult<Expr> {
+        let mut expr = self.and()?;
 
         while self.matches(&[TokenType::Or]) {
             // TODO: Remove clone
             let operator = self.previous().clone();
-            let right = self.and();
+            let right = self.and()?;
             expr = Expr::Logical(expr.into(), operator, right.into());
         }
 
-        expr
+        Ok(expr)
     }
 
-    fn and(&mut self) -> Expr {
-        let mut expr = self.equality();
+    fn and(&mut self) -> ParseResult<Expr> {
+        let mut expr = self.equality()?;
 
         while self.matches(&[TokenType::And]) {
             // TODO: Remove clone
             let operator = self.previous().clone();
-            let right = self.equality();
+            let right = self.equality()?;
             expr = Expr::Logical(expr.into(), operator, right.into());
         }
 
-        expr
+        Ok(expr)
     }
 
-    fn equality(&mut self) -> Expr {
-        let mut expr = self.comparison();
+    fn equality(&mut self) -> ParseResult<Expr> {
+        let mut expr = self.comparison()?;
 
         while self.matches(&[TokenType::BangEqual, TokenType::EqualEqual]) {
             let operator = self.previous().clone();
-            let right = self.comparison();
+            let right = self.comparison()?;
             expr = Expr::Binary(expr.into(), operator.into(), right.into());
         }
 
-        expr
+        Ok(expr)
     }
 
-    fn comparison(&mut self) -> Expr {
-        let mut expr = self.term();
+    fn comparison(&mut self) -> ParseResult<Expr> {
+        let mut expr = self.term()?;
 
         while self.matches(&[
             TokenType::Greater,
@@ -290,45 +290,45 @@ impl Parser {
             TokenType::LessEqual,
         ]) {
             let operator = self.previous().clone();
-            let right = self.term();
+            let right = self.term()?;
             expr = Expr::Binary(expr.into(), operator.into(), right.into());
         }
 
-        expr
+        Ok(expr)
     }
 
-    fn term(&mut self) -> Expr {
-        let mut expr = self.factor();
+    fn term(&mut self) -> ParseResult<Expr> {
+        let mut expr = self.factor()?;
 
         while self.matches(&[TokenType::Minus, TokenType::Plus]) {
             let operator = self.previous().clone();
-            let right = self.factor();
+            let right = self.factor()?;
             expr = Expr::Binary(expr.into(), operator.into(), right.into());
         }
 
-        expr
+        Ok(expr)
     }
 
-    fn factor(&mut self) -> Expr {
-        let mut expr = self.unary();
+    fn factor(&mut self) -> ParseResult<Expr> {
+        let mut expr = self.unary()?;
 
         while self.matches(&[TokenType::Slash, TokenType::Star]) {
             let operator = self.previous().clone();
-            let right = self.unary();
+            let right = self.unary()?;
             expr = Expr::Binary(expr.into(), operator.into(), right.into());
         }
 
-        expr
+        Ok(expr)
     }
 
-    fn unary(&mut self) -> Expr {
+    fn unary(&mut self) -> ParseResult<Expr> {
         if self.matches(&[TokenType::Bang, TokenType::Minus]) {
             let operator = self.previous().clone();
-            let right = self.unary();
-            return Expr::Unary(operator.into(), right.into());
+            let right = self.unary()?;
+            return Ok(Expr::Unary(operator.into(), right.into()));
         }
 
-        self.primary().unwrap()
+        self.primary()
     }
 
     fn primary(&mut self) -> ParseResult<Expr> {
@@ -351,7 +351,7 @@ impl Parser {
         }
 
         if self.matches(&[TokenType::LeftParen]) {
-            let expr = self.expression().unwrap();
+            let expr = self.expression()?;
             self.consume(TokenType::RightParen, "Expect ')' after expression.")?;
             return Ok(Expr::Grouping(expr.into()));
         }
