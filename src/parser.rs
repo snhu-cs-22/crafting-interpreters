@@ -41,7 +41,9 @@ impl Parser {
     pub fn parse(&mut self) -> Vec<Stmt> {
         let mut statements = Vec::new();
         while !self.is_at_end() {
-            statements.push(self.declaration().unwrap());
+            if let Some(statement) = self.declaration() {
+                statements.push(statement);
+            }
         }
         statements
     }
@@ -51,12 +53,18 @@ impl Parser {
         Some(self.assignment())
     }
 
-    fn declaration(&mut self) -> ParseResult<Stmt> {
-        // TODO: catch errors and synchronize
-        if self.matches(&[TokenType::Var]) {
-            return self.var_declaration();
-        }
-        self.statement()
+    fn declaration(&mut self) -> Option<Stmt> {
+        let result = if self.matches(&[TokenType::Var]) {
+            self.var_declaration()
+        } else {
+            self.statement()
+        };
+
+        // Catch errors and synchronize
+        result.ok().or_else(|| {
+            self.synchronize();
+            None
+        })
     }
 
     fn statement(&mut self) -> ParseResult<Stmt> {
@@ -182,7 +190,9 @@ impl Parser {
         let mut statements = Vec::new();
 
         while !self.check(&TokenType::RightBrace) && !self.is_at_end() {
-            statements.push(self.declaration()?);
+            if let Some(statement) = self.declaration() {
+                statements.push(statement);
+            }
         }
 
         self.consume(TokenType::RightBrace, "Expect '}' after block.")?;
