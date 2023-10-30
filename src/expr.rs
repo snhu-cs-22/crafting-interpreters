@@ -7,6 +7,7 @@ pub enum Expr {
     Grouping(Box<Expr>),
     Literal(Literal),
     Logical(Box<Expr>, Token, Box<Expr>),
+    Ternary(Box<Expr>, Token, Box<Expr>, Token, Box<Expr>),
     Unary(Token, Box<Expr>),
     Variable(Token),
 }

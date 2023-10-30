@@ -1,6 +1,4 @@
 // TODO: Implement C-style comma operator
-// TODO: Implement C-style ternary operator ("?:"). What precedence level is allowed between the ?
-// and :? Is the whole operator left-associative or right-associative?
 #[derive(Debug, Clone, Copy, PartialEq)]
 pub enum TokenType {
     // Single-character tokens.
@@ -15,6 +13,8 @@ pub enum TokenType {
     Semicolon,
     Slash,
     Star,
+    QuestionMark,
+    Colon,
 
     // One or two character tokens.
     Bang,

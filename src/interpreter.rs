@@ -172,6 +172,14 @@ impl Interpreter {
 
                 self.evaluate(right)
             }
+            Expr::Ternary(left, _, middle, _, right) => {
+                let left = self.evaluate(left)?;
+                if self.is_truthy(&left) {
+                    self.evaluate(middle)
+                } else {
+                    self.evaluate(right)
+                }
+            }
             Expr::Unary(operator, right) => {
                 let right = self.evaluate(right)?;
 

@@ -1,0 +1,11 @@
+print false ? true : (true ? true : false); // expect: true
+print false ? true : true ? true : false; // expect: true
+
+print false ? true : (false ? true : false); // expect: false
+print false ? true : false ? true : false; // expect: false
+
+print true ? (true ? true : false) : false; // expect: true
+print true ? true ? true : false : false; // expect: true
+
+print true ? (false ? true : false) : false; // expect: false
+print true ? false ? true : false : false; // expect: false

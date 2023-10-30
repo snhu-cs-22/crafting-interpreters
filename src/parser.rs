@@ -190,7 +190,7 @@ impl Parser {
     }
 
     fn assignment(&mut self) -> Expr {
-        let expr = self.or();
+        let expr = self.ternary();
 
         if self.matches(&[TokenType::Equal]) {
             // TODO: Remove clone
@@ -204,6 +204,29 @@ impl Parser {
                 // into panic mode and synchronize.
                 _ => self.error(&equals, "Invalid assignment target."),
             };
+        }
+
+        expr
+    }
+
+    fn ternary(&mut self) -> Expr {
+        let mut expr = self.or();
+
+        while self.matches(&[TokenType::QuestionMark]) {
+            let operator_1 = self.previous().clone();
+            let middle = self.ternary();
+
+            if self.matches(&[TokenType::Colon]) {
+                let operator_2 = self.previous().clone();
+                let right = self.ternary();
+                expr = Expr::Ternary(
+                    expr.into(),
+                    operator_1,
+                    middle.into(),
+                    operator_2,
+                    right.into(),
+                );
+            }
         }
 
         expr

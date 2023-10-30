@@ -1,0 +1,2 @@
+print true ? "apples" : "oranges"; // expect: "apples"
+print false ? "apples" : "oranges"; // expect: "oranges"
