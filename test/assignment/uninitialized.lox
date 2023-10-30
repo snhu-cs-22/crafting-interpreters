@@ -1,0 +1,2 @@
+var b;
+print b; // expect runtime error: Variable must be assigned to a value.

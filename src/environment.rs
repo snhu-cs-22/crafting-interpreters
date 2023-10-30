@@ -11,7 +11,7 @@ fn error(token: &Token, message: &str) {
 #[derive(Default, Clone)]
 pub struct Environment {
     pub enclosing: Option<Box<Environment>>,
-    values: HashMap<String, Literal>,
+    values: HashMap<String, Option<Literal>>,
 }
 
 impl Environment {
@@ -23,11 +23,13 @@ impl Environment {
     }
 
     pub fn get(&self, name: &Token) -> RuntimeResult<Literal> {
-        // TODO: Make it a runtime error to access a variable that has not been initialized or
-        // assigned to
         if let Some(value) = self.values.get(&name.lexeme.to_string()) {
-            // TODO: Remove clone
-            Ok(value.clone())
+            if let Some(value) = value {
+                // TODO: Remove clone
+                Ok(value.clone())
+            } else {
+                Err(self.error(name, "Variable must be assigned to a value."))
+            }
         } else {
             if let Some(enclosing) = &self.enclosing {
                 enclosing.get(name)
@@ -39,7 +41,7 @@ impl Environment {
 
     pub fn assign(&mut self, name: &Token, value: Literal) -> RuntimeResult<()> {
         if self.values.contains_key(&name.lexeme.to_string()) {
-            self.values.insert(name.lexeme.to_string(), value);
+            self.values.insert(name.lexeme.to_string(), Some(value));
             return Ok(());
         }
 
@@ -50,7 +52,7 @@ impl Environment {
         Err(self.error(name, &format!("Undefined variable \"{}\".", name.lexeme)))
     }
 
-    pub fn define(&mut self, name: &str, value: Literal) {
+    pub fn define(&mut self, name: &str, value: Option<Literal>) {
         self.values.insert(name.to_string(), value);
     }
 

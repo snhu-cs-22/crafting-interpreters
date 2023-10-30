@@ -43,8 +43,8 @@ impl Interpreter {
                 }
                 Stmt::Var(name, initializer) => {
                     let value = match initializer {
-                        Some(init_expression) => self.evaluate(&init_expression)?,
-                        None => Literal::Nil,
+                        Some(init_expression) => Some(self.evaluate(&init_expression)?),
+                        None => None,
                     };
 
                     self.environment.define(&name.lexeme, value);
