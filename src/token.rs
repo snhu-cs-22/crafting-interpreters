@@ -1,3 +1,5 @@
+use crate::function::{Function, NativeFunction};
+
 // TODO: Implement C-style comma operator
 #[derive(Debug, Clone, Copy, PartialEq)]
 pub enum TokenType {
@@ -83,4 +85,6 @@ pub enum Literal {
     String(Box<str>),
     Number(f64),
     Bool(bool),
+    Function(Box<Function>),
+    NativeFunction(Box<NativeFunction>),
 }

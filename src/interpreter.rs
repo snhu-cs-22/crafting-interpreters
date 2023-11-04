@@ -1,10 +1,11 @@
-use std::mem;
+use std::time::{Duration, SystemTime, UNIX_EPOCH};
 
 use substring::Substring;
 
 use super::report;
 use crate::environment::Environment;
 use crate::expr::Expr;
+use crate::function::{Callable, Function, NativeFunction};
 use crate::stmt::Stmt;
 use crate::token::{Literal, Token, TokenType};
 
@@ -12,16 +13,42 @@ fn error(token: &Token, message: &str) {
     report(token.line, &format!(" at \"{}\"", token.lexeme), message);
 }
 
-pub struct RuntimeError;
+pub enum RuntimeError {
+    Err,
+    Return(Literal),
+}
 
 pub type RuntimeResult<T> = Result<T, RuntimeError>;
 
-#[derive(Default)]
 pub struct Interpreter {
-    environment: Environment,
+    pub environment: Environment,
 }
 
 impl Interpreter {
+    pub fn new() -> Self {
+        let mut globals: Environment = Default::default();
+        globals.define(
+            "clock",
+            Some(Literal::NativeFunction(
+                NativeFunction {
+                    arity: 0,
+                    callable: |_, _| {
+                        let time = SystemTime::now()
+                            .duration_since(UNIX_EPOCH)
+                            .unwrap_or(Duration::new(0, 0))
+                            .as_millis() as f64;
+                        Ok(Literal::Number(time))
+                    },
+                }
+                .into(),
+            )),
+        );
+
+        Interpreter {
+            environment: globals,
+        }
+    }
+
     pub fn interpret(&mut self, statements: &[Stmt]) -> RuntimeResult<()> {
         for statement in statements {
             match statement {
@@ -29,8 +56,24 @@ impl Interpreter {
                     let value = self.evaluate(value)?;
                     println!("{}", self.stringify(value))
                 }
+                Stmt::Return(_, value) => {
+                    let value = match **value {
+                        Expr::Literal(Literal::Nil) => Literal::Nil,
+                        _ => self.evaluate(value)?,
+                    };
+                    return Err(RuntimeError::Return(value));
+                }
                 Stmt::Expression(expr) => {
                     self.evaluate(expr)?;
+                }
+                Stmt::Function(name, _, _) => {
+                    let function = Literal::Function(
+                        Function {
+                            declaration: statement.clone().into(),
+                        }
+                        .into(),
+                    );
+                    self.environment.define(&name.lexeme, Some(function));
                 }
                 Stmt::If(condition, then_branch, else_branch) => {
                     let condition = &self.evaluate(condition)?;
@@ -66,15 +109,9 @@ impl Interpreter {
                     }
                 }
                 Stmt::Block(statements) => {
-                    // All the mem operations make things look complicated, but all this
-                    // is doing is pushing a new environment onto a "environment stack,"
-                    // which takes ownership of the previous environment, runs the block
-                    // under the new environment, and puts the old environment back when
-                    // it's done.
-                    let mut new_environment = Environment::new(mem::take(&mut self.environment));
-                    mem::swap(&mut self.environment, &mut new_environment);
+                    self.environment.push_new();
                     self.interpret(statements)?;
-                    self.environment = mem::take(&mut self.environment.enclosing.as_mut().unwrap());
+                    self.environment.pop();
                 }
             }
         }
@@ -151,7 +188,44 @@ impl Interpreter {
                                 .error(operator, "Operands must be two numbers or two strings.")),
                         }
                     }
-                    _ => Err(self.error(operator, "Unreachable. This is a bug.")),
+                    _ => unreachable!(),
+                }
+            }
+            Expr::Call(callee, paren, arguments) => {
+                let arguments = arguments
+                    .iter()
+                    .map(|expr| self.evaluate(expr))
+                    .collect::<Result<Vec<_>, _>>()?;
+                match self.evaluate(callee)? {
+                    Literal::Function(function) => {
+                        if arguments.len() != function.arity() {
+                            return Err(self.error(
+                                paren,
+                                &format!(
+                                    "Expected {} argument(s) but got {}.",
+                                    function.arity(),
+                                    arguments.len()
+                                ),
+                            ));
+                        }
+
+                        Ok(function.call(self, arguments)?)
+                    }
+                    Literal::NativeFunction(function) => {
+                        if arguments.len() != function.arity() {
+                            return Err(self.error(
+                                paren,
+                                &format!(
+                                    "Expected {} argument(s) but got {}.",
+                                    function.arity(),
+                                    arguments.len()
+                                ),
+                            ));
+                        }
+
+                        Ok(function.call(self, arguments)?)
+                    }
+                    _ => Err(self.error(&paren, "Only functions and classes are callable.")),
                 }
             }
             Expr::Grouping(expr) => self.evaluate(expr),
@@ -252,11 +326,13 @@ impl Interpreter {
                 text.into()
             }
             Literal::Bool(value) => value.to_string().into(),
+            Literal::Function(_) => "<fn>".into(), // TODO: Print functions as <fn function_name>
+            Literal::NativeFunction(_) => "<native fn>".into(),
         }
     }
 
     fn error(&self, token: &Token, message: &str) -> RuntimeError {
         error(token, message);
-        RuntimeError
+        RuntimeError::Err
     }
 }

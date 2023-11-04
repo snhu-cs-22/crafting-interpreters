@@ -1,4 +1,5 @@
 use std::collections::HashMap;
+use std::mem;
 
 use super::report;
 use crate::interpreter::{RuntimeError, RuntimeResult};
@@ -11,18 +12,25 @@ fn error(token: &Token, message: &str) {
 #[derive(Default, Clone)]
 pub struct Environment {
     pub enclosing: Option<Box<Environment>>,
-    values: HashMap<String, Option<Literal>>,
+    pub values: HashMap<String, Option<Literal>>,
 }
 
 impl Environment {
-    pub fn new(enclosing: Environment) -> Self {
-        Environment {
-            enclosing: Some(enclosing.into()),
+    pub fn push_new(&mut self) {
+        let mut new = Environment {
+            enclosing: Some(mem::take(self).into()),
             values: HashMap::new(),
-        }
+        };
+        mem::swap(self, &mut new);
+    }
+
+    pub fn pop(&mut self) {
+        let mut old = mem::take(self.enclosing.as_mut().unwrap());
+        mem::swap(self, &mut old);
     }
 
     pub fn get(&self, name: &Token) -> RuntimeResult<Literal> {
+        // TODO: Make ../test/function/mutual_recursion.lox work
         if let Some(value) = self.values.get(&name.lexeme.to_string()) {
             if let Some(value) = value {
                 // TODO: Remove clone
@@ -58,6 +66,6 @@ impl Environment {
 
     fn error(&self, token: &Token, message: &str) -> RuntimeError {
         error(token, message);
-        RuntimeError
+        RuntimeError::Err
     }
 }

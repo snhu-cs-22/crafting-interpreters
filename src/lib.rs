@@ -1,5 +1,6 @@
 mod environment;
 mod expr;
+mod function;
 mod interpreter;
 mod parser;
 mod scanner;
@@ -40,7 +41,7 @@ fn run(source: &str) {
     let tokens = scanner.scan_tokens();
     let mut parser = Parser::new(tokens);
     let statements = parser.parse();
-    let mut interpreter: Interpreter = Default::default();
+    let mut interpreter = Interpreter::new();
 
     interpreter.interpret(&statements);
 }
