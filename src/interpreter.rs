@@ -70,6 +70,7 @@ impl Interpreter {
                     let function = Literal::Function(
                         Function {
                             declaration: statement.clone().into(),
+                            closure: self.environment.clone(),
                         }
                         .into(),
                     );
@@ -197,7 +198,7 @@ impl Interpreter {
                     .map(|expr| self.evaluate(expr))
                     .collect::<Result<Vec<_>, _>>()?;
                 match self.evaluate(callee)? {
-                    Literal::Function(function) => {
+                    Literal::Function(mut function) => {
                         if arguments.len() != function.arity() {
                             return Err(self.error(
                                 paren,
@@ -211,7 +212,7 @@ impl Interpreter {
 
                         Ok(function.call(self, arguments)?)
                     }
-                    Literal::NativeFunction(function) => {
+                    Literal::NativeFunction(mut function) => {
                         if arguments.len() != function.arity() {
                             return Err(self.error(
                                 paren,

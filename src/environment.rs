@@ -9,7 +9,7 @@ fn error(token: &Token, message: &str) {
     report(token.line, &format!(" at \"{}\"", token.lexeme), message);
 }
 
-#[derive(Default, Clone)]
+#[derive(Default, Debug, Clone)]
 pub struct Environment {
     pub enclosing: Option<Box<Environment>>,
     pub values: HashMap<String, Option<Literal>>,

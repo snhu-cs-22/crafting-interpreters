@@ -1,3 +1,4 @@
+use crate::environment::Environment;
 use crate::interpreter::{Interpreter, RuntimeError, RuntimeResult};
 use crate::stmt::Stmt;
 use crate::token::Literal;
@@ -5,7 +6,7 @@ use crate::token::Literal;
 pub trait Callable: std::fmt::Debug + Clone {
     fn arity(&self) -> usize;
     fn call(
-        &self,
+        &mut self,
         interpreter: &mut Interpreter,
         arguments: Vec<Literal>,
     ) -> RuntimeResult<Literal>;
@@ -23,7 +24,7 @@ impl Callable for NativeFunction {
     }
 
     fn call(
-        &self,
+        &mut self,
         interpreter: &mut Interpreter,
         arguments: Vec<Literal>,
     ) -> RuntimeResult<Literal> {
@@ -40,6 +41,7 @@ impl PartialEq for NativeFunction {
 #[derive(Debug, Clone)]
 pub struct Function {
     pub declaration: Stmt,
+    pub closure: Environment,
 }
 
 impl Callable for Function {
@@ -51,11 +53,11 @@ impl Callable for Function {
     }
 
     fn call(
-        &self,
+        &mut self,
         interpreter: &mut Interpreter,
         arguments: Vec<Literal>,
     ) -> RuntimeResult<Literal> {
-        interpreter.environment.push_new();
+        self.closure.push_new();
         if let Stmt::Function(_, params, body) = &self.declaration {
             for (param, argument) in std::iter::zip(params, arguments) {
                 interpreter.environment.define(&param.lexeme, Some(argument));
@@ -63,11 +65,11 @@ impl Callable for Function {
 
             match interpreter.interpret(body) {
                 Ok(_) => {
-                    interpreter.environment.pop();
+                    self.closure.pop();
                     return Ok(Literal::Nil);
                 }
                 Err(error) => {
-                    interpreter.environment.pop();
+                    self.closure.pop();
                     return match error {
                         RuntimeError::Err => Err(error),
                         RuntimeError::Return(value) => Ok(value),
