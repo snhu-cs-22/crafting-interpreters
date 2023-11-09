@@ -328,7 +328,7 @@ impl Parser {
         while self.matches(&[TokenType::BangEqual, TokenType::EqualEqual]) {
             let operator = self.previous().clone();
             let right = self.comparison()?;
-            expr = Expr::Binary(expr.into(), operator.into(), right.into());
+            expr = Expr::Binary(expr.into(), operator, right.into());
         }
 
         Ok(expr)
@@ -345,7 +345,7 @@ impl Parser {
         ]) {
             let operator = self.previous().clone();
             let right = self.term()?;
-            expr = Expr::Binary(expr.into(), operator.into(), right.into());
+            expr = Expr::Binary(expr.into(), operator, right.into());
         }
 
         Ok(expr)
@@ -357,7 +357,7 @@ impl Parser {
         while self.matches(&[TokenType::Minus, TokenType::Plus]) {
             let operator = self.previous().clone();
             let right = self.factor()?;
-            expr = Expr::Binary(expr.into(), operator.into(), right.into());
+            expr = Expr::Binary(expr.into(), operator, right.into());
         }
 
         Ok(expr)
@@ -369,7 +369,7 @@ impl Parser {
         while self.matches(&[TokenType::Slash, TokenType::Star]) {
             let operator = self.previous().clone();
             let right = self.unary()?;
-            expr = Expr::Binary(expr.into(), operator.into(), right.into());
+            expr = Expr::Binary(expr.into(), operator, right.into());
         }
 
         Ok(expr)
@@ -379,7 +379,7 @@ impl Parser {
         if self.matches(&[TokenType::Bang, TokenType::Minus]) {
             let operator = self.previous().clone();
             let right = self.unary()?;
-            return Ok(Expr::Unary(operator.into(), right.into()));
+            return Ok(Expr::Unary(operator, right.into()));
         }
 
         self.call()
@@ -445,7 +445,7 @@ impl Parser {
             return Ok(Expr::Grouping(expr.into()));
         }
 
-        Err(self.error(&self.peek(), "Expect expression"))
+        Err(self.error(self.peek(), "Expect expression"))
     }
 
     fn matches(&mut self, types: &[TokenType]) -> bool {
@@ -463,7 +463,7 @@ impl Parser {
             return Ok(self.advance());
         }
 
-        Err(self.error(&self.peek(), message))
+        Err(self.error(self.peek(), message))
     }
 
     fn check(&self, r#type: &TokenType) -> bool {

@@ -69,7 +69,7 @@ impl Interpreter {
                 Stmt::Function(name, _, _) => {
                     let function = Literal::Function(
                         Function {
-                            declaration: statement.clone().into(),
+                            declaration: statement.clone(),
                             closure: self.environment.clone(),
                         }
                         .into(),
@@ -87,7 +87,7 @@ impl Interpreter {
                 }
                 Stmt::Var(name, initializer) => {
                     let value = match initializer {
-                        Some(init_expression) => Some(self.evaluate(&init_expression)?),
+                        Some(init_expression) => Some(self.evaluate(init_expression)?),
                         None => None,
                     };
 
@@ -226,7 +226,7 @@ impl Interpreter {
 
                         Ok(function.call(self, arguments)?)
                     }
-                    _ => Err(self.error(&paren, "Only functions and classes are callable.")),
+                    _ => Err(self.error(paren, "Only functions and classes are callable.")),
                 }
             }
             Expr::Grouping(expr) => self.evaluate(expr),
@@ -239,11 +239,10 @@ impl Interpreter {
                     if self.is_truthy(&left) {
                         return Ok(left.clone());
                     }
-                } else {
-                    if !self.is_truthy(&left) {
-                        return Ok(left.clone());
-                    }
+                } else if !self.is_truthy(&left) {
+                    return Ok(left.clone());
                 }
+
 
                 self.evaluate(right)
             }

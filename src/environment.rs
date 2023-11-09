@@ -1,4 +1,4 @@
-use std::collections::HashMap;
+use std::collections::hash_map::{Entry, HashMap};
 use std::mem;
 
 use super::report;
@@ -38,18 +38,16 @@ impl Environment {
             } else {
                 Err(self.error(name, "Variable must be assigned to a value."))
             }
+        } else if let Some(enclosing) = &self.enclosing {
+            enclosing.get(name)
         } else {
-            if let Some(enclosing) = &self.enclosing {
-                enclosing.get(name)
-            } else {
-                Err(self.error(name, "Undefined variable."))
-            }
+            Err(self.error(name, "Undefined variable."))
         }
     }
 
     pub fn assign(&mut self, name: &Token, value: Literal) -> RuntimeResult<()> {
-        if self.values.contains_key(&name.lexeme.to_string()) {
-            self.values.insert(name.lexeme.to_string(), Some(value));
+        if let Entry::Occupied(mut e) = self.values.entry(name.lexeme.to_string()) {
+            e.insert(Some(value));
             return Ok(());
         }
 
