@@ -24,9 +24,14 @@ impl TryFrom<u8> for OpCode {
     }
 }
 
+struct LineNumber {
+    pub number: u32,
+    pub count: u32,
+}
+
 pub struct Chunk {
     code: Vec<u8>,
-    lines: Vec<u32>,
+    lines: Vec<LineNumber>,
     constants: ValueArray,
 }
 
@@ -41,7 +46,15 @@ impl Chunk {
 
     pub fn write(&mut self, byte: u8, line: u32) {
         self.code.push(byte);
-        self.lines.push(line);
+        if let Some(last_line) = self.lines.last_mut() {
+            if last_line.number == line {
+                last_line.count += 1;
+            } else {
+                self.lines.push(LineNumber { number: line, count: 1 });
+            }
+        } else {
+            self.lines.push(LineNumber { number: line, count: 1 });
+        }
     }
 
     pub fn add_constant(&mut self, value: Value) -> usize {
@@ -62,10 +75,10 @@ impl Chunk {
 
     pub fn disassemble_instruction(&self, offset: usize) -> usize {
         print!("{offset:04} ");
-        if offset > 0 && self.lines[offset] == self.lines[offset - 1] {
+        if offset > 0 && self.get_line(offset) == self.get_line(offset - 1) {
             print!("   | ");
         } else {
-            print!("{:04} ", self.lines[offset]);
+            print!("{:04} ", self.get_line(offset));
         }
 
         let instruction = self.code[offset];
@@ -92,5 +105,19 @@ impl Chunk {
 
     fn print_value(&self, value: Value) -> String {
         format!("{}", value)
+    }
+
+    fn get_line(&self, index: usize) -> u32 {
+        let mut number = 0;
+        let mut current_position = 0;
+        for line in &self.lines {
+            if current_position > index {
+                break;
+            } else {
+                current_position += line.count as usize;
+                number = line.number;
+            }
+        }
+        return number;
     }
 }
