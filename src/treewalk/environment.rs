@@ -2,8 +2,8 @@ use std::collections::hash_map::{Entry, HashMap};
 use std::mem;
 
 use super::report;
-use crate::interpreter::{RuntimeError, RuntimeResult};
-use crate::token::{Literal, Token};
+use crate::treewalk::interpreter::{RuntimeError, RuntimeResult};
+use crate::treewalk::token::{Literal, Token};
 
 fn error(token: &Token, message: &str) {
     report(token.line, &format!(" at \"{}\"", token.lexeme), message);

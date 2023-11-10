@@ -1,7 +1,7 @@
-use crate::environment::Environment;
-use crate::interpreter::{Interpreter, RuntimeError, RuntimeResult};
-use crate::stmt::Stmt;
-use crate::token::Literal;
+use crate::treewalk::environment::Environment;
+use crate::treewalk::interpreter::{Interpreter, RuntimeError, RuntimeResult};
+use crate::treewalk::stmt::Stmt;
+use crate::treewalk::token::Literal;
 
 pub trait Callable: std::fmt::Debug + Clone {
     fn arity(&self) -> usize;

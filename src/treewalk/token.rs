@@ -1,4 +1,4 @@
-use crate::function::{Function, NativeFunction};
+use crate::treewalk::function::{Function, NativeFunction};
 
 // TODO: Implement C-style comma operator
 #[derive(Debug, Clone, Copy, PartialEq)]

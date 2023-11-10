@@ -3,11 +3,11 @@ use std::time::{Duration, SystemTime, UNIX_EPOCH};
 use substring::Substring;
 
 use super::report;
-use crate::environment::Environment;
-use crate::expr::Expr;
-use crate::function::{Callable, Function, NativeFunction};
-use crate::stmt::Stmt;
-use crate::token::{Literal, Token, TokenType};
+use crate::treewalk::environment::Environment;
+use crate::treewalk::expr::Expr;
+use crate::treewalk::function::{Callable, Function, NativeFunction};
+use crate::treewalk::stmt::Stmt;
+use crate::treewalk::token::{Literal, Token, TokenType};
 
 fn error(token: &Token, message: &str) {
     report(token.line, &format!(" at \"{}\"", token.lexeme), message);

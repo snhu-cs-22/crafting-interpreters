@@ -1,4 +1,4 @@
-use crate::token::{Literal, Token};
+use crate::treewalk::token::{Literal, Token};
 
 #[derive(Debug, Clone)]
 pub enum Expr {

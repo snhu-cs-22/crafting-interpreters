@@ -4,7 +4,7 @@ use lazy_static::lazy_static;
 use substring::Substring;
 
 use super::report;
-use crate::token::{Literal, Token, TokenType};
+use crate::treewalk::token::{Literal, Token, TokenType};
 
 fn error(line: u32, message: &str) {
     report(line, "", message);

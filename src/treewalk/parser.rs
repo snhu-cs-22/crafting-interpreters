@@ -1,7 +1,7 @@
 use super::report;
-use crate::expr::Expr;
-use crate::stmt::Stmt;
-use crate::token::{Literal, Token, TokenType};
+use crate::treewalk::expr::Expr;
+use crate::treewalk::stmt::Stmt;
+use crate::treewalk::token::{Literal, Token, TokenType};
 
 #[derive(Debug)]
 pub struct ParseError;
