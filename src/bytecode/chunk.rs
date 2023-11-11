@@ -4,6 +4,11 @@ use super::value::{Value, ValueArray};
 #[repr(u8)]
 pub enum OpCode {
     OpConstant,
+    OpAdd,
+    OpSubtract,
+    OpMultiply,
+    OpDivide,
+    OpNegate,
     OpReturn,
 }
 
@@ -29,10 +34,11 @@ struct LineNumber {
     pub count: u32,
 }
 
+#[derive(Default)]
 pub struct Chunk {
-    code: Vec<u8>,
+    pub code: Vec<u8>,
     lines: Vec<LineNumber>,
-    constants: ValueArray,
+    pub constants: ValueArray,
 }
 
 impl Chunk {
@@ -82,14 +88,23 @@ impl Chunk {
         }
 
         let instruction = self.code[offset];
-        match instruction.try_into() {
-            Ok(OpCode::OpConstant) => return self.constant_instruction("OpConstant", offset),
-            Ok(OpCode::OpReturn) => return self.simple_instruction("OpReturn", offset),
+        return match instruction.try_into() {
+            Ok(OpCode::OpConstant) => self.constant_instruction("OpConstant", offset),
+            Ok(OpCode::OpAdd) => self.simple_instruction("OpAdd", offset),
+            Ok(OpCode::OpSubtract) => self.simple_instruction("OpSubtract", offset),
+            Ok(OpCode::OpMultiply) => self.simple_instruction("OpMultiply", offset),
+            Ok(OpCode::OpDivide) => self.simple_instruction("OpDivide", offset),
+            Ok(OpCode::OpNegate) => self.simple_instruction("OpNegate", offset),
+            Ok(OpCode::OpReturn) => self.simple_instruction("OpReturn", offset),
             Err(_) => {
                 println!("Unknown opcode {:?}", &instruction);
-                return offset + 1;
+                offset + 1
             }
-        }
+        };
+    }
+
+    pub fn print_value(&self, value: Value) -> String {
+        format!("{}", value)
     }
 
     fn simple_instruction(&self, name: &str, offset: usize) -> usize {
@@ -101,10 +116,6 @@ impl Chunk {
         let constant = self.code[offset + 1];
         println!("{:-16} {:04} '{}'", name, constant, self.print_value(self.constants[constant as usize]));
         return offset + 2;
-    }
-
-    fn print_value(&self, value: Value) -> String {
-        format!("{}", value)
     }
 
     fn get_line(&self, index: usize) -> u32 {
