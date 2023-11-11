@@ -57,8 +57,7 @@ impl VM {
                 Ok(OpCode::OpMultiply) => binary_op!(self, *),
                 Ok(OpCode::OpDivide) => binary_op!(self, /),
                 Ok(OpCode::OpNegate) => {
-                    let value = -self.stack.pop().unwrap();
-                    self.stack.push(value);
+                    *self.stack.last_mut().unwrap() *= -1.0;
                 }
                 Ok(OpCode::OpReturn) => {
                     let value = self.stack.pop().unwrap();
