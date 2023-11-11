@@ -1,13 +1,10 @@
 use super::chunk::{Chunk, OpCode};
 use super::value::Value;
 
-const STACK_MAX: usize = 256;
-
 pub struct VM {
     chunk: Chunk,
     ip: usize, // TODO: make this an actual pointer
-    stack: [Value; STACK_MAX],
-    stack_top: usize, // TODO: make this an actual pointer
+    stack: Vec<Value>,
 }
 
 pub enum InterpretResult {
@@ -18,9 +15,9 @@ pub enum InterpretResult {
 
 macro_rules! binary_op {
     ($vm:ident, $op:tt) => {{
-        let b = $vm.pop();
-        let a = $vm.pop();
-        $vm.push(a $op b);
+        let b = $vm.stack.pop().unwrap();
+        let a = $vm.stack.pop().unwrap();
+        $vm.stack.push(a $op b);
     }}
 }
 
@@ -29,8 +26,7 @@ impl VM {
         VM {
             chunk: Default::default(),
             ip: Default::default(),
-            stack: [Default::default(); STACK_MAX],
-            stack_top: 0,
+            stack: Default::default(),
         }
     }
 
@@ -39,21 +35,11 @@ impl VM {
         return self.run();
     }
 
-    fn push(&mut self, value: Value) {
-        self.stack[self.stack_top] = value;
-        self.stack_top += 1;
-    }
-
-    fn pop(&mut self) -> Value {
-        self.stack_top -= 1;
-        self.stack[self.stack_top]
-    }
-
     fn run(&mut self) -> InterpretResult {
         loop {
             if cfg!(debug_assertions) {
                 print!("          ");
-                for slot in &mut self.stack[0..self.stack_top] {
+                for slot in &self.stack {
                     print!("[ {} ]", self.chunk.print_value(*slot));
                 }
                 println!();
@@ -64,18 +50,18 @@ impl VM {
             match instruction {
                 Ok(OpCode::OpConstant) => {
                     let constant = self.read_constant();
-                    self.push(constant);
+                    self.stack.push(constant);
                 }
                 Ok(OpCode::OpAdd) => binary_op!(self, +),
                 Ok(OpCode::OpSubtract) => binary_op!(self, -),
                 Ok(OpCode::OpMultiply) => binary_op!(self, *),
                 Ok(OpCode::OpDivide) => binary_op!(self, /),
                 Ok(OpCode::OpNegate) => {
-                    let value = -self.pop();
-                    self.push(value);
+                    let value = -self.stack.pop().unwrap();
+                    self.stack.push(value);
                 }
                 Ok(OpCode::OpReturn) => {
-                    let value = self.pop();
+                    let value = self.stack.pop().unwrap();
                     println!("{}", self.chunk.print_value(value));
                     return InterpretResult::Ok;
                 }
