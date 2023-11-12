@@ -1,4 +1,5 @@
 use super::chunk::{Chunk, OpCode};
+use super::compiler::compile;
 use super::value::Value;
 
 pub struct VM {
@@ -30,9 +31,9 @@ impl VM {
         }
     }
 
-    pub fn interpret(&mut self, chunk: Chunk) -> InterpretResult {
-        self.chunk = chunk;
-        return self.run();
+    pub fn interpret(&mut self, source: &str) -> InterpretResult {
+        compile(source);
+        InterpretResult::Ok
     }
 
     fn run(&mut self) -> InterpretResult {

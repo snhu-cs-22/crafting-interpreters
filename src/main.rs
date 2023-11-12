@@ -1,34 +1,30 @@
 use std::process::ExitCode;
 
 use crafting_interpreters::{bytecode, treewalk};
-use bytecode::chunk::{Chunk, OpCode};
-use bytecode::vm::VM;
+use bytecode::{repl, run_file};
+use bytecode::vm::{VM, InterpretResult};
 
 fn main() -> ExitCode {
     let mut vm = VM::new();
 
-    let mut chunk = Chunk::new();
-    let constant = chunk.add_constant(1.2);
-    chunk.write(OpCode::OpConstant.into(), 123);
-    chunk.write(constant.try_into().unwrap(), 123);
+    let args = std::env::args().collect::<Vec<_>>();
 
-    let constant = chunk.add_constant(3.4);
-    chunk.write(OpCode::OpConstant.into(), 123);
-    chunk.write(constant.try_into().unwrap(), 123);
-
-    chunk.write(OpCode::OpAdd.into(), 123);
-
-    let constant = chunk.add_constant(5.6);
-    chunk.write(OpCode::OpConstant.into(), 123);
-    chunk.write(constant.try_into().unwrap(), 123);
-
-    chunk.write(OpCode::OpDivide.into(), 123);
-    chunk.write(OpCode::OpNegate.into(), 123);
-
-    chunk.write(OpCode::OpReturn.into(), 123);
-
-    chunk.disassemble("test chunk");
-    vm.interpret(chunk);
+    match args.len() {
+        1 => repl(&mut vm),
+        2 => match run_file(&mut vm, &args[1]) {
+            Ok(InterpretResult::CompileError) => return ExitCode::from(65),
+            Ok(InterpretResult::RuntimeError) => return ExitCode::from(70),
+            Err(_) => {
+                println!("Could not open file \"{}\".", &args[1]);
+                return ExitCode::from(74);
+            }
+            _ => (),
+        },
+        _ => {
+            println!("Usage: jlox [script]");
+            return ExitCode::from(64);
+        }
+    }
 
     ExitCode::SUCCESS
 }
