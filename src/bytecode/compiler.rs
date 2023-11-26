@@ -127,10 +127,10 @@ impl Parser<'_> {
         self.parse_precedence((Into::<u8>::into(rule.precedence) + 1).try_into().unwrap());
 
         match operator_type {
-            TokenType::Plus => self.emit_byte(OpCode::OpAdd.into()),
-            TokenType::Minus => self.emit_byte(OpCode::OpSubtract.into()),
-            TokenType::Star => self.emit_byte(OpCode::OpMultiply.into()),
-            TokenType::Slash => self.emit_byte(OpCode::OpDivide.into()),
+            TokenType::Plus => self.emit_byte(OpCode::Add.into()),
+            TokenType::Minus => self.emit_byte(OpCode::Subtract.into()),
+            TokenType::Star => self.emit_byte(OpCode::Multiply.into()),
+            TokenType::Slash => self.emit_byte(OpCode::Divide.into()),
             _ => unreachable!(),
         }
     }
@@ -142,7 +142,7 @@ impl Parser<'_> {
 
     fn number(&mut self) {
         let value = self.previous.lexeme.parse::<f64>().unwrap();
-        self.emit_constant(value);
+        self.emit_constant(Value::Number(value));
     }
 
     fn unary(&mut self) {
@@ -153,7 +153,7 @@ impl Parser<'_> {
 
         // Emit the operator instruction.
         match operator_type {
-            TokenType::Minus => self.emit_byte(OpCode::OpNegate.into()),
+            TokenType::Minus => self.emit_byte(OpCode::Negate.into()),
             _ => unreachable!(),
         }
     }
@@ -228,7 +228,7 @@ impl Parser<'_> {
     }
 
     fn emit_return(&mut self) {
-        self.emit_byte(OpCode::OpReturn.into());
+        self.emit_byte(OpCode::Return.into());
     }
 
     fn make_constant(&mut self, value: Value) -> u8 {
@@ -243,7 +243,7 @@ impl Parser<'_> {
 
     fn emit_constant(&mut self, value: Value) {
         let constant = self.make_constant(value);
-        self.emit_bytes(OpCode::OpConstant.into(), constant);
+        self.emit_bytes(OpCode::Constant.into(), constant);
     }
 
     fn emit_bytes(&mut self, byte1: u8, byte2: u8) {

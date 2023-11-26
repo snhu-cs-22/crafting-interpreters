@@ -55,18 +55,18 @@ impl VM {
 
             let instruction = self.read_byte().try_into();
             match instruction {
-                Ok(OpCode::OpConstant) => {
+                Ok(OpCode::Constant) => {
                     let constant = self.read_constant();
                     self.stack.push(constant);
                 }
-                Ok(OpCode::OpAdd) => binary_op!(self, +),
-                Ok(OpCode::OpSubtract) => binary_op!(self, -),
-                Ok(OpCode::OpMultiply) => binary_op!(self, *),
-                Ok(OpCode::OpDivide) => binary_op!(self, /),
-                Ok(OpCode::OpNegate) => {
+                Ok(OpCode::Add) => binary_op!(self, +),
+                Ok(OpCode::Subtract) => binary_op!(self, -),
+                Ok(OpCode::Multiply) => binary_op!(self, *),
+                Ok(OpCode::Divide) => binary_op!(self, /),
+                Ok(OpCode::Negate) => {
                     *self.stack.last_mut().unwrap() *= -1.0;
                 }
-                Ok(OpCode::OpReturn) => {
+                Ok(OpCode::Return) => {
                     let value = self.stack.pop().unwrap();
                     println!("{}", self.chunk.print_value(value));
                     return InterpretResult::Ok;

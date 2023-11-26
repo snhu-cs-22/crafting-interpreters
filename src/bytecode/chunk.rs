@@ -3,13 +3,13 @@ use super::value::{Value, ValueArray};
 #[derive(Debug, Clone, Copy)]
 #[repr(u8)]
 pub enum OpCode {
-    OpConstant,
-    OpAdd,
-    OpSubtract,
-    OpMultiply,
-    OpDivide,
-    OpNegate,
-    OpReturn,
+    Constant,
+    Add,
+    Subtract,
+    Multiply,
+    Divide,
+    Negate,
+    Return,
 }
 
 impl Into<u8> for OpCode {
@@ -89,13 +89,13 @@ impl Chunk {
 
         let instruction = self.code[offset];
         return match instruction.try_into() {
-            Ok(OpCode::OpConstant) => self.constant_instruction("OpConstant", offset),
-            Ok(OpCode::OpAdd) => self.simple_instruction("OpAdd", offset),
-            Ok(OpCode::OpSubtract) => self.simple_instruction("OpSubtract", offset),
-            Ok(OpCode::OpMultiply) => self.simple_instruction("OpMultiply", offset),
-            Ok(OpCode::OpDivide) => self.simple_instruction("OpDivide", offset),
-            Ok(OpCode::OpNegate) => self.simple_instruction("OpNegate", offset),
-            Ok(OpCode::OpReturn) => self.simple_instruction("OpReturn", offset),
+            Ok(OpCode::Constant) => self.constant_instruction("OpConstant", offset),
+            Ok(OpCode::Add) => self.simple_instruction("OpAdd", offset),
+            Ok(OpCode::Subtract) => self.simple_instruction("OpSubtract", offset),
+            Ok(OpCode::Multiply) => self.simple_instruction("OpMultiply", offset),
+            Ok(OpCode::Divide) => self.simple_instruction("OpDivide", offset),
+            Ok(OpCode::Negate) => self.simple_instruction("OpNegate", offset),
+            Ok(OpCode::Return) => self.simple_instruction("OpReturn", offset),
             Err(_) => {
                 println!("Unknown opcode {:?}", &instruction);
                 offset + 1
