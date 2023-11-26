@@ -1,7 +1,9 @@
 // TODO: Implement C-style comma operator
-#[derive(Debug, Clone, Copy, PartialEq)]
+#[derive(Default, Debug, Clone, Copy, PartialEq)]
 #[repr(u8)]
 pub enum TokenType {
+    #[default]
+    None,
     // Single-character tokens.
     LeftParen,
     RightParen,
@@ -69,23 +71,25 @@ impl TryFrom<u8> for TokenType {
     }
 }
 
-pub struct Token<'a> {
+#[derive(Default, Clone)]
+pub struct Token {
     pub r#type: TokenType,
-    pub slice: &'a str,
+    pub lexeme: Box<str>,
     pub line: u32,
 }
 
-pub struct Scanner {
-    source: Box<str>,
+#[derive(Clone)]
+pub struct Scanner<'a> {
+    source: &'a str,
     start: usize,
     current: usize,
     line: u32,
 }
 
-impl Scanner {
-    pub fn new(source: &str) -> Self {
+impl Scanner<'_> {
+    pub fn new<'a>(source: &'a str) -> Scanner<'a> {
         Scanner {
-            source: source.into(),
+            source,
             start: 0,
             current: 0,
             line: 1,
@@ -161,7 +165,7 @@ impl Scanner {
         self.current >= self.source.len()
     }
 
-    fn advance(&mut self) -> char {
+    pub fn advance(&mut self) -> char {
         self.current += 1;
         self.source.chars().nth(self.current - 1).unwrap()
     }
@@ -198,7 +202,7 @@ impl Scanner {
     fn make_token(&self, r#type: TokenType) -> Token {
         Token {
             r#type,
-            slice: &self.source[self.start..self.current],
+            lexeme: (&self.source[self.start..self.current]).into(),
             line: self.line,
         }
     }
@@ -206,7 +210,7 @@ impl Scanner {
     fn error_token<'a>(&'a self, message: &'a str) -> Token {
         Token {
             r#type: TokenType::Error,
-            slice: message,
+            lexeme: message.into(),
             line: self.line,
         }
     }
