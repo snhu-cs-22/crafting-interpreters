@@ -22,7 +22,9 @@ pub fn repl(vm: &mut VM) {
         let mut line = String::new();
         reader.read_line(&mut line);
 
-        if line.is_empty() {
+        if line.clone().trim().is_empty() {
+            println!();
+            println!("Quitting REPL...");
             println!();
             break;
         }
