@@ -170,6 +170,10 @@ impl Scanner<'_> {
         self.source.chars().nth(self.current - 1).unwrap()
     }
 
+    fn start(&self, index: usize) -> char {
+        self.source.chars().nth(self.start + index).unwrap()
+    }
+
     fn peek(&self) -> char {
         if self.is_at_end() {
             return '\0';
@@ -266,7 +270,7 @@ impl Scanner<'_> {
     }
 
     fn check_keyword(&self, start: usize, length: usize, rest: &str, r#type: TokenType) -> TokenType {
-        if self.current - self.start == start + length && self.source[self.start..self.current] == *rest {
+        if self.current - self.start == start + length && self.source[self.start+start..self.start+start+length] == *rest {
             return r#type;
         }
 
@@ -281,21 +285,20 @@ impl Scanner<'_> {
     }
 
     fn identifier_type(&self) -> TokenType {
-        match self.peek() {
+        match self.start(0) {
             'a' => self.check_keyword(1, 2, "nd", TokenType::And),
             'c' => self.check_keyword(1, 4, "lass", TokenType::Class),
             'e' => self.check_keyword(1, 3, "lse", TokenType::Else),
             'f' => {
                 if self.current - self.start > 1 {
-                    match self.peek_next() {
+                    match self.start(1) {
                         'a' => self.check_keyword(2, 3, "lse", TokenType::False),
                         'o' => self.check_keyword(2, 1, "r", TokenType::For),
                         'u' => self.check_keyword(2, 1, "n", TokenType::Fun),
                         _ => TokenType::Identifier,
                     }
                 } else {
-                    // TODO: Fix this
-                    TokenType::Error
+                    TokenType::Identifier
                 }
             }
             'i' => self.check_keyword(1, 1, "f", TokenType::If),
@@ -306,14 +309,13 @@ impl Scanner<'_> {
             's' => self.check_keyword(1, 4, "uper", TokenType::Super),
             't' => {
                 if self.current - self.start > 1 {
-                    match self.peek_next() {
+                    match self.start(1) {
                         'h' => self.check_keyword(2, 2, "is", TokenType::This),
                         'r' => self.check_keyword(2, 2, "ue", TokenType::True),
                         _ => TokenType::Identifier,
                     }
                 } else {
-                    // TODO: Fix this
-                    TokenType::Error
+                    TokenType::Identifier
                 }
             }
             'v' => self.check_keyword(1, 2, "ar", TokenType::Var),

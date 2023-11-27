@@ -4,10 +4,17 @@ use super::value::{Value, ValueArray};
 #[repr(u8)]
 pub enum OpCode {
     Constant,
+    Nil,
+    True,
+    False,
+    Equal,
+    Greater,
+    Less,
     Add,
     Subtract,
     Multiply,
     Divide,
+    Not,
     Negate,
     Return,
 }
@@ -90,10 +97,17 @@ impl Chunk {
         let instruction = self.code[offset];
         return match instruction.try_into() {
             Ok(OpCode::Constant) => self.constant_instruction("OpConstant", offset),
+            Ok(OpCode::Nil) => self.simple_instruction("OpNil", offset),
+            Ok(OpCode::True) => self.simple_instruction("OpTrue", offset),
+            Ok(OpCode::False) => self.simple_instruction("OpFalse", offset),
+            Ok(OpCode::Equal) => self.simple_instruction("OpEqual", offset),
+            Ok(OpCode::Greater) => self.simple_instruction("OpGreater", offset),
+            Ok(OpCode::Less) => self.simple_instruction("OpLess", offset),
             Ok(OpCode::Add) => self.simple_instruction("OpAdd", offset),
             Ok(OpCode::Subtract) => self.simple_instruction("OpSubtract", offset),
             Ok(OpCode::Multiply) => self.simple_instruction("OpMultiply", offset),
             Ok(OpCode::Divide) => self.simple_instruction("OpDivide", offset),
+            Ok(OpCode::Not) => self.simple_instruction("OpNot", offset),
             Ok(OpCode::Negate) => self.simple_instruction("OpNegate", offset),
             Ok(OpCode::Return) => self.simple_instruction("OpReturn", offset),
             Err(_) => {
@@ -104,7 +118,11 @@ impl Chunk {
     }
 
     pub fn print_value(&self, value: Value) -> String {
-        format!("{}", value)
+        match value {
+            Value::Bool(value) => format!("{}", value),
+            Value::Nil => format!("nil"),
+            Value::Number(value) => format!("{}", value),
+        }
     }
 
     fn simple_instruction(&self, name: &str, offset: usize) -> usize {
@@ -118,7 +136,7 @@ impl Chunk {
         return offset + 2;
     }
 
-    fn get_line(&self, index: usize) -> u32 {
+    pub fn get_line(&self, index: usize) -> u32 {
         let mut number = 0;
         let mut current_position = 0;
         for line in &self.lines {

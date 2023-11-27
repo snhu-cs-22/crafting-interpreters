@@ -15,10 +15,24 @@ pub enum InterpretResult {
 }
 
 macro_rules! binary_op {
-    ($vm:ident, $op:tt) => {{
-        let b = $vm.stack.pop().unwrap();
-        let a = $vm.stack.pop().unwrap();
-        $vm.stack.push(a $op b);
+    ($vm:ident, $value_type:expr, $op:tt) => {{
+        match ($vm.stack.pop().unwrap(), $vm.stack.pop().unwrap()) {
+            (Value::Number(b), Value::Number(a)) => {
+                $vm.stack.push($value_type(a $op b));
+            }
+            (_, _) => return InterpretResult::RuntimeError,
+        }
+    }}
+}
+
+macro_rules! runtime_error {
+    ($vm:ident, $format:literal$(, )?$($args:expr),*) => {{
+        eprintln!($format, $($args, )*);
+
+        let instruction = $vm.ip - 1;
+        let line = $vm.chunk.get_line(instruction);
+        eprintln!("[line {}] in script", line);
+        $vm.reset_stack();
     }}
 }
 
@@ -59,12 +73,32 @@ impl VM {
                     let constant = self.read_constant();
                     self.stack.push(constant);
                 }
-                Ok(OpCode::Add) => binary_op!(self, +),
-                Ok(OpCode::Subtract) => binary_op!(self, -),
-                Ok(OpCode::Multiply) => binary_op!(self, *),
-                Ok(OpCode::Divide) => binary_op!(self, /),
+                Ok(OpCode::Nil) => self.stack.push(Value::Nil),
+                Ok(OpCode::True) => self.stack.push(Value::Bool(true)),
+                Ok(OpCode::False) => self.stack.push(Value::Bool(false)),
+                Ok(OpCode::Equal) => {
+                    let b = self.stack.pop().unwrap();
+                    let a = self.stack.pop().unwrap();
+                    self.stack.push(Value::Bool(a == b));
+                }
+                Ok(OpCode::Greater) => binary_op!(self, Value::Bool, >),
+                Ok(OpCode::Less) => binary_op!(self, Value::Bool, <),
+                Ok(OpCode::Add) => binary_op!(self, Value::Number, +),
+                Ok(OpCode::Subtract) => binary_op!(self, Value::Number, -),
+                Ok(OpCode::Multiply) => binary_op!(self, Value::Number, *),
+                Ok(OpCode::Divide) => binary_op!(self, Value::Number, /),
+                Ok(OpCode::Not) => {
+                    let value = self.stack.pop().unwrap();
+                    let value = Value::Bool(self.is_falsey(value));
+                    self.stack.push(value);
+                }
                 Ok(OpCode::Negate) => {
-                    *self.stack.last_mut().unwrap() *= -1.0;
+                    if let Value::Number(ref mut value) = *self.stack.last_mut().unwrap() {
+                        *value *= -1.0;
+                    } else {
+                        runtime_error!(self, "Operand must be a number.");
+                        return InterpretResult::RuntimeError;
+                    }
                 }
                 Ok(OpCode::Return) => {
                     let value = self.stack.pop().unwrap();
@@ -85,5 +119,23 @@ impl VM {
     fn read_constant(&mut self) -> Value {
         let byte = self.read_byte() as usize;
         self.chunk.constants[byte]
+    }
+
+    pub fn reset_stack(&mut self) {
+        self.chunk = Default::default();
+        self.ip = Default::default();
+        self.stack = Default::default();
+    }
+
+    fn peek(&self, distance: usize) -> Value {
+        self.stack[self.stack.len() - distance]
+    }
+
+    fn is_falsey(&self, value: Value) -> bool {
+        match value {
+            Value::Nil => true,
+            Value::Bool(value) => !value,
+            _ => false,
+        }
     }
 }
