@@ -1,6 +1,6 @@
 use super::chunk::{Chunk, OpCode};
 use super::compiler::compile;
-use super::value::Value;
+use super::value::{Value, Obj};
 
 pub struct VM {
     chunk: Chunk,
@@ -61,7 +61,7 @@ impl VM {
             if cfg!(debug_assertions) {
                 print!("          ");
                 for slot in &self.stack {
-                    print!("[ {} ]", self.chunk.print_value(*slot));
+                    print!("[ {} ]", *slot);
                 }
                 println!();
                 self.chunk.disassemble_instruction(self.ip);
@@ -83,7 +83,20 @@ impl VM {
                 }
                 Ok(OpCode::Greater) => binary_op!(self, Value::Bool, >),
                 Ok(OpCode::Less) => binary_op!(self, Value::Bool, <),
-                Ok(OpCode::Add) => binary_op!(self, Value::Number, +),
+                Ok(OpCode::Add) => {
+                    match (self.stack.pop().unwrap(), self.stack.pop().unwrap()) {
+                        (Value::Number(b), Value::Number(a)) => {
+                            self.stack.push(Value::Number(a + b));
+                        }
+                        (Value::Obj(Obj::String(b)), Value::Obj(Obj::String(a))) => {
+                            self.stack.push(Value::Obj(Obj::String(a + &b)));
+                        }
+                        (_, _) => {
+                            runtime_error!(self, "Operands must be two numbers or two strings.");
+                            return InterpretResult::RuntimeError
+                        }
+                    }
+                }
                 Ok(OpCode::Subtract) => binary_op!(self, Value::Number, -),
                 Ok(OpCode::Multiply) => binary_op!(self, Value::Number, *),
                 Ok(OpCode::Divide) => binary_op!(self, Value::Number, /),
@@ -102,7 +115,7 @@ impl VM {
                 }
                 Ok(OpCode::Return) => {
                     let value = self.stack.pop().unwrap();
-                    println!("{}", self.chunk.print_value(value));
+                    println!("{}", value);
                     return InterpretResult::Ok;
                 }
                 _ => (),
@@ -118,17 +131,15 @@ impl VM {
 
     fn read_constant(&mut self) -> Value {
         let byte = self.read_byte() as usize;
-        self.chunk.constants[byte]
+        self.chunk.constants[byte].clone()
     }
 
     pub fn reset_stack(&mut self) {
-        self.chunk = Default::default();
-        self.ip = Default::default();
         self.stack = Default::default();
     }
 
     fn peek(&self, distance: usize) -> Value {
-        self.stack[self.stack.len() - distance]
+        self.stack[self.stack.len() - distance].clone()
     }
 
     fn is_falsey(&self, value: Value) -> bool {

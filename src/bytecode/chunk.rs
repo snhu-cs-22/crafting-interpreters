@@ -117,14 +117,6 @@ impl Chunk {
         };
     }
 
-    pub fn print_value(&self, value: Value) -> String {
-        match value {
-            Value::Bool(value) => format!("{}", value),
-            Value::Nil => format!("nil"),
-            Value::Number(value) => format!("{}", value),
-        }
-    }
-
     fn simple_instruction(&self, name: &str, offset: usize) -> usize {
         println!("{}", name);
         offset + 1
@@ -132,7 +124,7 @@ impl Chunk {
 
     fn constant_instruction(&self, name: &str, offset: usize) -> usize {
         let constant = self.code[offset + 1];
-        println!("{:-16} {:04} '{}'", name, constant, self.print_value(self.constants[constant as usize]));
+        println!("{:-16} {:04} '{}'", name, constant, self.constants[constant as usize]);
         return offset + 2;
     }
 

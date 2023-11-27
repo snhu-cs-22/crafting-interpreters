@@ -1,6 +1,6 @@
 use super::scanner::{Scanner, Token, TokenType};
 use super::chunk::{Chunk, OpCode};
-use super::value::Value;
+use super::value::{Value, Obj};
 
 #[derive(Debug, PartialEq, PartialOrd)]
 #[repr(u8)]
@@ -160,6 +160,11 @@ impl Parser<'_> {
         self.emit_constant(Value::Number(value));
     }
 
+    fn string(&mut self) {
+        // TODO: slice may need to be cloned
+        self.emit_constant(Value::Obj(Obj::String(self.previous.lexeme[1..self.previous.lexeme.len() - 1].to_string())));
+    }
+
     fn unary(&mut self) {
         let operator_type = self.previous.r#type;
 
@@ -215,7 +220,7 @@ impl Parser<'_> {
             TokenType::Less => Some(ParseRule::new(None, Some(|p| p.binary()), Precedence::Comparison)),
             TokenType::LessEqual => Some(ParseRule::new(None, Some(|p| p.binary()), Precedence::Comparison)),
             TokenType::Identifier => Some(ParseRule::new(None, None, Precedence::None)),
-            TokenType::String => Some(ParseRule::new(None, None, Precedence::None)),
+            TokenType::String => Some(ParseRule::new(Some(|p| p.string()), None, Precedence::None)),
             TokenType::Number => Some(ParseRule::new(Some(|p| p.number()), None, Precedence::None)),
             TokenType::And => Some(ParseRule::new(None, None, Precedence::None)),
             TokenType::Class => Some(ParseRule::new(None, None, Precedence::None)),
