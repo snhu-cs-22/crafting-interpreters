@@ -2,7 +2,8 @@ use std::mem;
 
 use super::scanner::{Scanner, Token, TokenType};
 use super::chunk::{Chunk, OpCode};
-use super::value::{Value, Obj};
+use super::object::Obj;
+use super::value::Value;
 
 #[derive(Debug, PartialEq, PartialOrd)]
 #[repr(u8)]
@@ -174,8 +175,7 @@ impl Parser<'_> {
     }
 
     fn string(&mut self) {
-        // TODO: slice may need to be cloned
-        self.emit_constant(Value::Obj(Obj::new_string(self.previous.lexeme[1..self.previous.lexeme.len() - 1].to_string())));
+        self.emit_constant(Value::Obj(Obj::new_string(self.previous.lexeme[1..self.previous.lexeme.len() - 1].clone().to_string())));
     }
 
     fn unary(&mut self) {

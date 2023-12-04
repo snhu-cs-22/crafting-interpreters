@@ -1,7 +1,8 @@
 use super::chunk::{Chunk, OpCode};
 use super::compiler::compile;
 use super::table::Table;
-use super::value::{Value, Obj};
+use super::object::Obj;
+use super::value::Value;
 
 pub struct VM {
     chunk: Chunk,

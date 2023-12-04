@@ -1,4 +1,5 @@
-use super::value::{Obj, Value};
+use super::object::Obj;
+use super::value::Value;
 
 #[inline]
 fn grow_capacity(capacity: usize) -> usize {
