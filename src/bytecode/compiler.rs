@@ -1,3 +1,5 @@
+use std::mem;
+
 use super::scanner::{Scanner, Token, TokenType};
 use super::chunk::{Chunk, OpCode};
 use super::value::{Value, Obj};
@@ -18,10 +20,16 @@ pub enum Precedence {
     Primary,
 }
 
+impl Precedence {
+    pub fn next_highest(self) -> Option<Precedence> {
+        (Into::<u8>::into(self) + 1).try_into().ok()
+    }
+}
+
 impl Into<u8> for Precedence {
     fn into(self) -> u8 {
         // SAFETY: Because `Precedence` is marked `repr(u8)`, all conversions to u8 are valid.
-        unsafe { std::mem::transmute(self) }
+        unsafe { mem::transmute(self) }
     }
 }
 
@@ -29,9 +37,14 @@ impl TryFrom<u8> for Precedence {
     type Error = ();
 
     fn try_from(value: u8) -> Result<Self, Self::Error> {
-        // SAFETY: This isn't safe as not all `u8`s translate to a valid `Precedence`. Too bad!
-        Ok(unsafe { std::mem::transmute(value) })
-        // Err(())
+        // SAFETY: Since the variants in the `Precedence` enum are assigned default values, and
+        // because `Primary` is the highest precedence, all values up to `Primary` are valid `u8`s
+        // and every value greater than `Primary` is invalid.
+        if value <= Precedence::Primary.into() {
+            Ok(unsafe { mem::transmute(value) })
+        } else {
+            Err(())
+        }
     }
 }
 
@@ -86,7 +99,7 @@ impl Parser<'_> {
     }
 
     fn advance(&mut self) {
-        self.previous = std::mem::take(&mut self.current);
+        self.previous = mem::take(&mut self.current);
 
         loop {
             self.current = self.scanner.scan_token();
@@ -124,7 +137,7 @@ impl Parser<'_> {
     fn binary(&mut self) {
         let operator_type = self.previous.r#type;
         let rule = self.get_rule(operator_type).unwrap();
-        self.parse_precedence((Into::<u8>::into(rule.precedence) + 1).try_into().unwrap());
+        self.parse_precedence(rule.precedence.next_highest().unwrap());
 
         match operator_type {
             TokenType::BangEqual => self.emit_bytes(OpCode::Equal.into(), OpCode::Not.into()),

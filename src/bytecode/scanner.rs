@@ -1,3 +1,5 @@
+use std::mem;
+
 // TODO: Implement C-style comma operator
 #[derive(Default, Debug, Clone, Copy, PartialEq)]
 #[repr(u8)]
@@ -57,7 +59,7 @@ pub enum TokenType {
 impl Into<u8> for TokenType {
     fn into(self) -> u8 {
         // SAFETY: Because `TokenType` is marked `repr(u8)`, all conversions to u8 are valid.
-        unsafe { std::mem::transmute(self) }
+        unsafe { mem::transmute(self) }
     }
 }
 
@@ -65,9 +67,14 @@ impl TryFrom<u8> for TokenType {
     type Error = ();
 
     fn try_from(value: u8) -> Result<Self, <Self as TryFrom<u8>>::Error> {
-        // SAFETY: This isn't safe as not all `u8`s translate to a valid `TokenType`. Too bad!
-        Ok(unsafe { std::mem::transmute(value) })
-        // Err(())
+        // SAFETY: Since the variants in the `TokenType` enum are assigned default values, and
+        // because `Eof` is the highest precedence, all values up to `Eof` are valid `u8`s
+        // and every value greater than `Eof` is invalid.
+        if value > TokenType::Eof.into() {
+            Ok(unsafe { mem::transmute(value) })
+        } else {
+            Err(())
+        }
     }
 }
 

@@ -1,3 +1,5 @@
+use std::mem;
+
 use super::value::{Value, ValueArray};
 
 #[derive(Debug, Clone, Copy)]
@@ -22,7 +24,7 @@ pub enum OpCode {
 impl Into<u8> for OpCode {
     fn into(self) -> u8 {
         // SAFETY: Because `OpCode` is marked `repr(u8)`, all conversions to u8 are valid.
-        unsafe { std::mem::transmute(self) }
+        unsafe { mem::transmute(self) }
     }
 }
 
@@ -30,9 +32,14 @@ impl TryFrom<u8> for OpCode {
     type Error = ();
 
     fn try_from(value: u8) -> Result<Self, Self::Error> {
-        // SAFETY: This isn't safe as not all `u8`s translate to a valid `OpCode`. Too bad!
-        Ok(unsafe { std::mem::transmute(value) })
-        // Err(())
+        // SAFETY: Since the variants in the `OpCode` enum are assigned default values, and because
+        // `Return` is the highest precedence, all values up to `Return` are valid `u8`s and every
+        // value greater than `Return` is invalid.
+        if value <= OpCode::Return.into() {
+            Ok(unsafe { mem::transmute(value) })
+        } else {
+            Err(())
+        }
     }
 }
 
