@@ -1,11 +1,13 @@
 use super::chunk::{Chunk, OpCode};
 use super::compiler::compile;
+use super::table::Table;
 use super::value::{Value, Obj};
 
 pub struct VM {
     chunk: Chunk,
     ip: usize, // TODO: make this an actual pointer
     stack: Vec<Value>,
+    strings: Table,
 }
 
 pub enum InterpretResult {
@@ -42,6 +44,7 @@ impl VM {
             chunk: Default::default(),
             ip: Default::default(),
             stack: Default::default(),
+            strings: Table::new(),
         }
     }
 
@@ -88,8 +91,9 @@ impl VM {
                         (Value::Number(b), Value::Number(a)) => {
                             self.stack.push(Value::Number(a + b));
                         }
-                        (Value::Obj(Obj::String(b)), Value::Obj(Obj::String(a))) => {
-                            self.stack.push(Value::Obj(Obj::String(a + &b)));
+                        (Value::Obj(Obj::String{ string: b, .. }), Value::Obj(Obj::String{ string: a, .. })) => {
+                            let value = Value::Obj(self.allocate_string(a + &b));
+                            self.stack.push(value);
                         }
                         (_, _) => {
                             runtime_error!(self, "Operands must be two numbers or two strings.");
@@ -148,5 +152,11 @@ impl VM {
             Value::Bool(value) => !value,
             _ => false,
         }
+    }
+
+    fn allocate_string(&mut self, string: String) -> Obj {
+        let string = Obj::new_string(string);
+        self.strings.set(&string, &Value::Nil);
+        string
     }
 }
