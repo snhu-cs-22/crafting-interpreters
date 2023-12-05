@@ -5,6 +5,7 @@ pub mod scanner;
 pub mod table;
 pub mod value;
 pub mod vm;
+pub mod utils;
 
 use std::fs;
 use std::io::prelude::*;

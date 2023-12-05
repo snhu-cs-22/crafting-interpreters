@@ -4,6 +4,7 @@ use super::scanner::{Scanner, Token, TokenType};
 use super::chunk::{Chunk, OpCode};
 use super::object::Obj;
 use super::value::Value;
+use crate::impl_convert_enum_u8;
 
 #[derive(Debug, PartialEq, PartialOrd)]
 #[repr(u8)]
@@ -27,27 +28,7 @@ impl Precedence {
     }
 }
 
-impl Into<u8> for Precedence {
-    fn into(self) -> u8 {
-        // SAFETY: Because `Precedence` is marked `repr(u8)`, all conversions to u8 are valid.
-        unsafe { mem::transmute(self) }
-    }
-}
-
-impl TryFrom<u8> for Precedence {
-    type Error = ();
-
-    fn try_from(value: u8) -> Result<Self, Self::Error> {
-        // SAFETY: Since the variants in the `Precedence` enum are assigned default values, and
-        // because `Primary` is the highest precedence, all values up to `Primary` are valid `u8`s
-        // and every value greater than `Primary` is invalid.
-        if value <= Precedence::Primary.into() {
-            Ok(unsafe { mem::transmute(value) })
-        } else {
-            Err(())
-        }
-    }
-}
+impl_convert_enum_u8!(Precedence, Primary);
 
 pub fn compile(source: &str, chunk: &mut Chunk) -> bool {
     let mut parser = Parser {

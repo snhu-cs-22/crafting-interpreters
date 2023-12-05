@@ -1,4 +1,4 @@
-use std::mem;
+use crate::impl_convert_enum_u8;
 
 // TODO: Implement C-style comma operator
 #[derive(Default, Debug, Clone, Copy, PartialEq)]
@@ -56,27 +56,7 @@ pub enum TokenType {
     Eof,
 }
 
-impl Into<u8> for TokenType {
-    fn into(self) -> u8 {
-        // SAFETY: Because `TokenType` is marked `repr(u8)`, all conversions to u8 are valid.
-        unsafe { mem::transmute(self) }
-    }
-}
-
-impl TryFrom<u8> for TokenType {
-    type Error = ();
-
-    fn try_from(value: u8) -> Result<Self, <Self as TryFrom<u8>>::Error> {
-        // SAFETY: Since the variants in the `TokenType` enum are assigned default values, and
-        // because `Eof` is the highest precedence, all values up to `Eof` are valid `u8`s
-        // and every value greater than `Eof` is invalid.
-        if value > TokenType::Eof.into() {
-            Ok(unsafe { mem::transmute(value) })
-        } else {
-            Err(())
-        }
-    }
-}
+impl_convert_enum_u8!(TokenType, Eof);
 
 #[derive(Default, Clone)]
 pub struct Token {

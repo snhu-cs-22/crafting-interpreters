@@ -1,6 +1,5 @@
-use std::mem;
-
 use super::value::{Value, ValueArray};
+use crate::impl_convert_enum_u8;
 
 #[derive(Debug, Clone, Copy)]
 #[repr(u8)]
@@ -21,27 +20,7 @@ pub enum OpCode {
     Return,
 }
 
-impl Into<u8> for OpCode {
-    fn into(self) -> u8 {
-        // SAFETY: Because `OpCode` is marked `repr(u8)`, all conversions to u8 are valid.
-        unsafe { mem::transmute(self) }
-    }
-}
-
-impl TryFrom<u8> for OpCode {
-    type Error = ();
-
-    fn try_from(value: u8) -> Result<Self, Self::Error> {
-        // SAFETY: Since the variants in the `OpCode` enum are assigned default values, and because
-        // `Return` is the highest precedence, all values up to `Return` are valid `u8`s and every
-        // value greater than `Return` is invalid.
-        if value <= OpCode::Return.into() {
-            Ok(unsafe { mem::transmute(value) })
-        } else {
-            Err(())
-        }
-    }
-}
+impl_convert_enum_u8!(OpCode, Return);
 
 struct LineNumber {
     pub number: u32,
