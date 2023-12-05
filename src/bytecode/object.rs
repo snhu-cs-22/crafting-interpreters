@@ -2,7 +2,7 @@ use std::fmt;
 
 use super::table::hash_string;
 
-#[derive(Clone, Debug, PartialEq)]
+#[derive(Clone, Debug, Hash, PartialEq, Eq)]
 pub enum Obj {
     String{
         string: String,

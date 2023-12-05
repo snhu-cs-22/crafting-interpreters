@@ -1,14 +1,17 @@
 use super::chunk::{Chunk, OpCode};
 use super::compiler::compile;
-use super::table::Table;
+// use super::table::Table;
+type Table = std::collections::HashMap<Obj, Value>;
 use super::object::Obj;
 use super::value::Value;
+
 
 pub struct VM {
     chunk: Chunk,
     ip: usize, // TODO: make this an actual pointer
     stack: Vec<Value>,
     strings: Table,
+    globals: Table,
 }
 
 pub enum InterpretResult {
@@ -46,6 +49,7 @@ impl VM {
             ip: Default::default(),
             stack: Default::default(),
             strings: Table::new(),
+            globals: Table::new(),
         }
     }
 
@@ -80,6 +84,34 @@ impl VM {
                 Ok(OpCode::Nil) => self.stack.push(Value::Nil),
                 Ok(OpCode::True) => self.stack.push(Value::Bool(true)),
                 Ok(OpCode::False) => self.stack.push(Value::Bool(false)),
+                Ok(OpCode::Pop) => {
+                    self.stack.pop();
+                }
+                Ok(OpCode::GetGlobal) => {
+                    if let Value::Obj(name) = self.read_constant() {
+                        if let Some(value) = self.globals.get(&name) {
+                            self.stack.push(value.clone());
+                        } else {
+                            runtime_error!(self, "Undefined variable '{}'.", &name);
+                            return InterpretResult::RuntimeError;
+                        }
+                    }
+                }
+                Ok(OpCode::DefineGlobal) => {
+                    if let Value::Obj(name) = self.read_constant() {
+                        self.globals.insert(name, self.peek(0));
+                        self.stack.pop();
+                    }
+                }
+                Ok(OpCode::SetGlobal) => {
+                    if let Value::Obj(name) = self.read_constant() {
+                        if self.globals.insert(name.clone(), self.peek(0)).is_none() {
+                            self.globals.remove(&name);
+                            runtime_error!(self, "Undefined variable '{}'.", name);
+                            return InterpretResult::RuntimeError;
+                        }
+                    }
+                }
                 Ok(OpCode::Equal) => {
                     let b = self.stack.pop().unwrap();
                     let a = self.stack.pop().unwrap();
@@ -118,9 +150,11 @@ impl VM {
                         return InterpretResult::RuntimeError;
                     }
                 }
+                Ok(OpCode::Print) => {
+                    println!("{}", self.stack.pop().unwrap());
+                }
                 Ok(OpCode::Return) => {
-                    let value = self.stack.pop().unwrap();
-                    println!("{}", value);
+                    // Exit interpreter.
                     return InterpretResult::Ok;
                 }
                 _ => (),
@@ -144,7 +178,7 @@ impl VM {
     }
 
     fn peek(&self, distance: usize) -> Value {
-        self.stack[self.stack.len() - distance].clone()
+        self.stack[self.stack.len() - distance - 1].clone()
     }
 
     fn is_falsey(&self, value: Value) -> bool {
@@ -157,7 +191,7 @@ impl VM {
 
     fn allocate_string(&mut self, string: String) -> Obj {
         let string = Obj::new_string(string);
-        self.strings.set(&string, &Value::Nil);
+        self.strings.insert(string.clone(), Value::Nil);
         string
     }
 }
