@@ -87,6 +87,14 @@ impl VM {
                 Ok(OpCode::Pop) => {
                     self.stack.pop();
                 }
+                Ok(OpCode::GetLocal) => {
+                    let slot = self.read_byte() as usize;
+                    self.stack.push(self.stack[slot].clone());
+                }
+                Ok(OpCode::SetLocal) => {
+                    let slot = self.read_byte() as usize;
+                    self.stack[slot] = self.peek(0);
+                }
                 Ok(OpCode::GetGlobal) => {
                     if let Value::Obj(name) = self.read_constant() {
                         if let Some(value) = self.globals.get(&name) {
