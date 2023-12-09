@@ -24,6 +24,9 @@ pub enum OpCode {
     Not,
     Negate,
     Print,
+    Jump,
+    JumpIfFalse,
+    Loop,
     Return,
 }
 
@@ -108,7 +111,10 @@ impl Chunk {
             Ok(OpCode::Divide) => self.simple_instruction("OpDivide", offset),
             Ok(OpCode::Not) => self.simple_instruction("OpNot", offset),
             Ok(OpCode::Negate) => self.simple_instruction("OpNegate", offset),
+            Ok(OpCode::Jump) => self.jump_instruction("OpJump", 1, offset),
+            Ok(OpCode::JumpIfFalse) => self.jump_instruction("OpJumpIfFalse", 1, offset),
             Ok(OpCode::Print) => self.simple_instruction("OpPrint", offset),
+            Ok(OpCode::Loop) => self.jump_instruction("OpLoop", -1, offset),
             Ok(OpCode::Return) => self.simple_instruction("OpReturn", offset),
             Err(_) => {
                 println!("Unknown opcode {:?}", &instruction);
@@ -126,6 +132,13 @@ impl Chunk {
         let slot = self.code[offset + 1];
         println!("{:-16} {:04}", name, slot);
         offset + 2
+    }
+
+    fn jump_instruction(&self, name: &str, sign: i8, offset: usize) -> usize {
+        let mut jump = (self.code[offset + 1] as u16) << 8;
+        jump |= self.code[offset + 2] as u16;
+        println!("{:-16} {:04} -> {:04}", name, offset, offset as isize + 3 + sign as isize * jump as isize);
+        offset + 3
     }
 
     fn constant_instruction(&self, name: &str, offset: usize) -> usize {

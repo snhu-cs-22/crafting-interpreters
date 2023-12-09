@@ -161,6 +161,20 @@ impl VM {
                 Ok(OpCode::Print) => {
                     println!("{}", self.stack.pop().unwrap());
                 }
+                Ok(OpCode::Jump) => {
+                    let offset = self.read_short() as usize;
+                    self.ip += offset;
+                }
+                Ok(OpCode::JumpIfFalse) => {
+                    let offset = self.read_short() as usize;
+                    if self.is_falsey(self.peek(0)) {
+                        self.ip += offset;
+                    }
+                }
+                Ok(OpCode::Loop) => {
+                    let offset = self.read_short() as usize;
+                    self.ip -= offset;
+                }
                 Ok(OpCode::Return) => {
                     // Exit interpreter.
                     return InterpretResult::Ok;
@@ -174,6 +188,11 @@ impl VM {
         let result = self.chunk.code[self.ip];
         self.ip += 1;
         result
+    }
+
+    fn read_short(&mut self) -> u16 {
+        self.ip += 2;
+        ((self.chunk.code[self.ip - 2] as u16) << 8) | self.chunk.code[self.ip - 1] as u16
     }
 
     fn read_constant(&mut self) -> Value {
