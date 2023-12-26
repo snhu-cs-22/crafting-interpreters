@@ -63,6 +63,7 @@ pub struct Token {
     pub r#type: TokenType,
     pub lexeme: Box<str>,
     pub line: u32,
+    pub col: u32,
 }
 
 #[derive(Clone)]
@@ -71,6 +72,7 @@ pub struct Scanner<'a> {
     start: usize,
     current: usize,
     line: u32,
+    col: u32,
 }
 
 impl Scanner<'_> {
@@ -80,6 +82,7 @@ impl Scanner<'_> {
             start: 0,
             current: 0,
             line: 1,
+            col: 1,
         }
     }
 
@@ -153,6 +156,9 @@ impl Scanner<'_> {
 
         if c == '\n' {
             self.line += 1;
+            self.col = 1;
+        } else {
+            self.col += 1;
         }
 
         c
@@ -184,6 +190,7 @@ impl Scanner<'_> {
             r#type,
             lexeme: (&self.source[self.start..self.current]).into(),
             line: self.line,
+            col: self.col,
         }
     }
 
@@ -192,6 +199,7 @@ impl Scanner<'_> {
             r#type: TokenType::Error,
             lexeme: message.into(),
             line: self.line,
+            col: self.col,
         }
     }
 

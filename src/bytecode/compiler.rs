@@ -670,7 +670,7 @@ impl Parser<'_> {
             return;
         }
         self.panic_mode = true;
-        eprint!("[line {}] Error", &token.line);
+        eprint!("[{}:{}] Error", &token.line, token.col as usize - &token.lexeme.len());
 
         if token.r#type == TokenType::Eof {
             eprint!(" at end");
