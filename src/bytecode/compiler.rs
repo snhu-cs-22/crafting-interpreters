@@ -61,16 +61,6 @@ pub struct ParseRule {
     pub precedence: Precedence,
 }
 
-impl ParseRule {
-    pub fn new(prefix: Option<ParseFn>, infix: Option<ParseFn>, precedence: Precedence) -> Self {
-        Self {
-            prefix,
-            infix,
-            precedence,
-        }
-    }
-}
-
 #[derive(Default, Clone)]
 struct Local {
     pub name: Token,
@@ -366,55 +356,63 @@ impl Parser<'_> {
     }
 
     fn get_rule(&mut self, r#type: TokenType) -> Option<ParseRule> {
-        use Precedence as Prec;
-
         macro_rules! rule_fn {
             ($fn:ident) => {
                 Some(|parser, can_assign| parser.$fn(can_assign))
             }
         }
 
+        macro_rules! parse_rule {
+            ($prefix:expr, $infix:expr, $precedence:ident) => {
+                Some(ParseRule {
+                    prefix: $prefix,
+                    infix: $infix,
+                    precedence: Precedence::$precedence,
+                })
+            }
+        }
+
         match r#type {
-            TokenType::LeftParen => Some(ParseRule::new(rule_fn!(grouping), None, Prec::None)),
-            TokenType::RightParen => Some(ParseRule::new(None, None, Prec::None)),
-            TokenType::LeftBrace => Some(ParseRule::new(None, None, Prec::None)),
-            TokenType::RightBrace => Some(ParseRule::new(None, None, Prec::None)),
-            TokenType::Comma => Some(ParseRule::new(None, None, Prec::None)),
-            TokenType::Dot => Some(ParseRule::new(None, None, Prec::None)),
-            TokenType::Minus => Some(ParseRule::new(rule_fn!(unary), rule_fn!(binary), Prec::Term)),
-            TokenType::Plus => Some(ParseRule::new(None, rule_fn!(binary), Prec::Term)),
-            TokenType::Semicolon => Some(ParseRule::new(None, None, Prec::None)),
-            TokenType::Slash => Some(ParseRule::new(None, rule_fn!(binary), Prec::Factor)),
-            TokenType::Star => Some(ParseRule::new(None, rule_fn!(binary), Prec::Factor)),
-            TokenType::Bang => Some(ParseRule::new(rule_fn!(unary), None, Prec::None)),
-            TokenType::BangEqual => Some(ParseRule::new(None, rule_fn!(binary), Prec::Equality)),
-            TokenType::Equal => Some(ParseRule::new(None, None, Prec::None)),
-            TokenType::EqualEqual => Some(ParseRule::new(None, rule_fn!(binary), Prec::Equality)),
-            TokenType::Greater => Some(ParseRule::new(None, rule_fn!(binary), Prec::Comparison)),
-            TokenType::GreaterEqual => Some(ParseRule::new(None, rule_fn!(binary), Prec::Comparison)),
-            TokenType::Less => Some(ParseRule::new(None, rule_fn!(binary), Prec::Comparison)),
-            TokenType::LessEqual => Some(ParseRule::new(None, rule_fn!(binary), Prec::Comparison)),
-            TokenType::Identifier => Some(ParseRule::new(rule_fn!(variable), None, Prec::None)),
-            TokenType::String => Some(ParseRule::new(rule_fn!(string), None, Prec::None)),
-            TokenType::Number => Some(ParseRule::new(rule_fn!(number), None, Prec::None)),
-            TokenType::And => Some(ParseRule::new(None, rule_fn!(and), Prec::And)),
-            TokenType::Class => Some(ParseRule::new(None, None, Prec::None)),
-            TokenType::Else => Some(ParseRule::new(None, None, Prec::None)),
-            TokenType::False => Some(ParseRule::new(rule_fn!(literal), None, Prec::None)),
-            TokenType::For => Some(ParseRule::new(None, None, Prec::None)),
-            TokenType::Fun => Some(ParseRule::new(None, None, Prec::None)),
-            TokenType::If => Some(ParseRule::new(None, None, Prec::None)),
-            TokenType::Nil => Some(ParseRule::new(rule_fn!(literal), None, Prec::None)),
-            TokenType::Or => Some(ParseRule::new(None, rule_fn!(or), Prec::Or)),
-            TokenType::Print => Some(ParseRule::new(None, None, Prec::None)),
-            TokenType::Return => Some(ParseRule::new(None, None, Prec::None)),
-            TokenType::Super => Some(ParseRule::new(None, None, Prec::None)),
-            TokenType::This => Some(ParseRule::new(None, None, Prec::None)),
-            TokenType::True => Some(ParseRule::new(rule_fn!(literal), None, Prec::None)),
-            TokenType::Var => Some(ParseRule::new(None, None, Prec::None)),
-            TokenType::While => Some(ParseRule::new(None, None, Prec::None)),
-            TokenType::Error => Some(ParseRule::new(None, None, Prec::None)),
-            TokenType::Eof => Some(ParseRule::new(None, None, Prec::None)),
+            TokenType::LeftParen => parse_rule!(rule_fn!(grouping), None, None),
+            TokenType::RightParen => parse_rule!(None, None, None),
+            TokenType::LeftBrace => parse_rule!(None, None, None),
+            TokenType::RightBrace => parse_rule!(None, None, None),
+            TokenType::Comma => parse_rule!(None, None, None),
+            TokenType::Dot => parse_rule!(None, None, None),
+            TokenType::Minus => parse_rule!(rule_fn!(unary), rule_fn!(binary), Term),
+            TokenType::Plus => parse_rule!(None, rule_fn!(binary), Term),
+            TokenType::Semicolon => parse_rule!(None, None, None),
+            TokenType::Slash => parse_rule!(None, rule_fn!(binary), Factor),
+            TokenType::Star => parse_rule!(None, rule_fn!(binary), Factor),
+            TokenType::Bang => parse_rule!(rule_fn!(unary), None, None),
+            TokenType::BangEqual => parse_rule!(None, rule_fn!(binary), Equality),
+            TokenType::Equal => parse_rule!(None, None, None),
+            TokenType::EqualEqual => parse_rule!(None, rule_fn!(binary), Equality),
+            TokenType::Greater => parse_rule!(None, rule_fn!(binary), Comparison),
+            TokenType::GreaterEqual => parse_rule!(None, rule_fn!(binary), Comparison),
+            TokenType::Less => parse_rule!(None, rule_fn!(binary), Comparison),
+            TokenType::LessEqual => parse_rule!(None, rule_fn!(binary), Comparison),
+            TokenType::Identifier => parse_rule!(rule_fn!(variable), None, None),
+            TokenType::String => parse_rule!(rule_fn!(string), None, None),
+            TokenType::Number => parse_rule!(rule_fn!(number), None, None),
+            TokenType::And => parse_rule!(None, rule_fn!(and), And),
+            TokenType::Class => parse_rule!(None, None, None),
+            TokenType::Else => parse_rule!(None, None, None),
+            TokenType::False => parse_rule!(rule_fn!(literal), None, None),
+            TokenType::For => parse_rule!(None, None, None),
+            TokenType::Fun => parse_rule!(None, None, None),
+            TokenType::If => parse_rule!(None, None, None),
+            TokenType::Nil => parse_rule!(rule_fn!(literal), None, None),
+            TokenType::Or => parse_rule!(None, rule_fn!(or), Or),
+            TokenType::Print => parse_rule!(None, None, None),
+            TokenType::Return => parse_rule!(None, None, None),
+            TokenType::Super => parse_rule!(None, None, None),
+            TokenType::This => parse_rule!(None, None, None),
+            TokenType::True => parse_rule!(rule_fn!(literal), None, None),
+            TokenType::Var => parse_rule!(None, None, None),
+            TokenType::While => parse_rule!(None, None, None),
+            TokenType::Error => parse_rule!(None, None, None),
+            TokenType::Eof => parse_rule!(None, None, None),
             _ => None,
         }
     }
