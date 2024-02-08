@@ -24,3 +24,33 @@ macro_rules! impl_convert_enum_u8 {
         }
     }
 }
+
+#[macro_export]
+macro_rules! impl_wrapper_type {
+    ($wrapper:ty, $inner:ty) => {
+        impl From<$inner> for $wrapper {
+            fn from(value: $inner) -> Self {
+                Self(value)
+            }
+        }
+
+        impl From<$wrapper> for $inner {
+            fn from(value: $wrapper) -> $inner {
+                value.0
+            }
+        }
+    }
+}
+
+#[macro_export]
+macro_rules! impl_binary_ops_for_wrapper_type {
+    ($wrapper:ident, $inner:ident, $($op_trait:ident)::*, $op_fn:ident, $op_symbol:tt) => {
+        impl $($op_trait)::* for $wrapper {
+            type Output = Self;
+
+            fn $op_fn(self, rhs: Self) -> Self {
+                Self(self.0 $op_symbol rhs.0)
+            }
+        }
+    }
+}

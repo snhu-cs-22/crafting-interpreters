@@ -27,17 +27,19 @@ pub enum OpCode {
     Jump,
     JumpIfFalse,
     Loop,
+    Call,
     Return,
 }
 
 impl_convert_enum_u8!(OpCode, Return);
 
+#[derive(Clone, Default, Debug, Hash, PartialEq, Eq)]
 struct LineNumber {
     pub number: u32,
     pub count: u32,
 }
 
-#[derive(Default)]
+#[derive(Clone, Default, Debug, Hash, PartialEq, Eq)]
 pub struct Chunk {
     pub code: Vec<u8>,
     lines: Vec<LineNumber>,
@@ -115,6 +117,7 @@ impl Chunk {
             Ok(OpCode::JumpIfFalse) => self.jump_instruction("OpJumpIfFalse", 1, offset),
             Ok(OpCode::Print) => self.simple_instruction("OpPrint", offset),
             Ok(OpCode::Loop) => self.jump_instruction("OpLoop", -1, offset),
+            Ok(OpCode::Call) => self.byte_instruction("OpCall", offset),
             Ok(OpCode::Return) => self.simple_instruction("OpReturn", offset),
             Err(_) => {
                 println!("Unknown opcode {:?}", &instruction);
