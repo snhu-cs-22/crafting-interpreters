@@ -538,7 +538,7 @@ impl Parser<'_> {
 
         let function = self.end_compiler();
         let constant = self.make_constant(Value::Obj(function));
-        self.emit_bytes(OpCode::Constant.into(), constant);
+        self.emit_bytes(OpCode::Closure.into(), constant);
     }
 
     fn fun_declaration(&mut self) {

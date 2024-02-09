@@ -28,6 +28,7 @@ pub enum OpCode {
     JumpIfFalse,
     Loop,
     Call,
+    Closure,
     Return,
 }
 
@@ -118,6 +119,12 @@ impl Chunk {
             Ok(OpCode::Print) => self.simple_instruction("OpPrint", offset),
             Ok(OpCode::Loop) => self.jump_instruction("OpLoop", -1, offset),
             Ok(OpCode::Call) => self.byte_instruction("OpCall", offset),
+            Ok(OpCode::Closure) => {
+                let constant = self.code[offset + 1];
+                print!("{:-16} {:04}", "OpClosure", constant);
+                println!();
+                offset + 2
+            }
             Ok(OpCode::Return) => self.simple_instruction("OpReturn", offset),
             Err(_) => {
                 println!("Unknown opcode {:?}", &instruction);

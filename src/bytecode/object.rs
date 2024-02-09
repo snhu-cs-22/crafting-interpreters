@@ -12,6 +12,9 @@ pub enum Obj {
         string: String,
         hash: u32,
     },
+    Closure {
+        function: Box<Obj>,
+    },
     Function {
         arity: u8,
         chunk: Chunk,
@@ -38,6 +41,12 @@ impl Obj {
             name: None,
         }
     }
+
+    pub fn new_closure(function: Box<Obj>) -> Self {
+        Obj::Closure {
+            function,
+        }
+    }
     
     pub fn new_native(function: NativeFn) -> Self {
         Obj::NativeFunction {
@@ -58,6 +67,7 @@ impl fmt::Display for Obj {
                     write!(f, "<script>")
                 }
             }
+            Obj::Closure { function, .. } => write!(f, "{}", function),
             Obj::NativeFunction{ .. } => write!(f, "<native fn>"),
         }
     }
