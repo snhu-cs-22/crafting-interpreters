@@ -1,4 +1,4 @@
-use super::object::Obj;
+use super::object::StringObj;
 use super::value::Value;
 
 #[inline]
@@ -12,7 +12,7 @@ fn grow_capacity(capacity: usize) -> usize {
 
 #[derive(Default, Clone, Debug)]
 pub struct Entry {
-    key: Option<Obj>,
+    key: Option<StringObj>,
     value: Value,
 }
 
@@ -29,7 +29,7 @@ impl Table {
         }
     }
 
-    pub fn set(&mut self, key: &Obj, value: &Value) -> bool {
+    pub fn set(&mut self, key: &StringObj, value: &Value) -> bool {
         if (self.entries.len() + 1) as f64 > self.entries.capacity() as f64 * Self::TABLE_MAX_LOAD {
             self.entries.resize(grow_capacity(self.entries.capacity()), Default::default());
         }
@@ -48,7 +48,7 @@ impl Table {
         is_new_key
     }
 
-    pub fn delete(&mut self, key: &Obj) -> bool {
+    pub fn delete(&mut self, key: &StringObj) -> bool {
         if self.entries.len() == 0 {
             return false;
         }
@@ -72,35 +72,30 @@ impl Table {
         }
     }
 
-    fn find_entry(&self, key: &Obj) -> Option<Entry> {
-        match key {
-            Obj::String{ hash, .. } => {
-                let mut index = *hash as usize % self.entries.capacity();
-                let mut tombstone = None;
-                loop {
-                    let entry = self.entries.get(index).unwrap();
-                    if entry.key == None {
-                        if entry.value == Value::Nil {
-                            // Empty entry.
-                            return Some(tombstone.unwrap_or(entry.clone()))
-                        } else {
-                            // We found a tombstone.
-                            if tombstone.is_none() {
-                                tombstone = Some(entry.clone());
-                            }
-                        }
-                    } else if entry.key == Some(key.clone()) {
-                        return Some(entry.clone());
+    fn find_entry(&self, key: &StringObj) -> Option<Entry> {
+        let mut index = key.hash as usize % self.entries.capacity();
+        let mut tombstone = None;
+        loop {
+            let entry = self.entries.get(index).unwrap();
+            if entry.key == None {
+                if entry.value == Value::Nil {
+                    // Empty entry.
+                    return Some(tombstone.unwrap_or(entry.clone()))
+                } else {
+                    // We found a tombstone.
+                    if tombstone.is_none() {
+                        tombstone = Some(entry.clone());
                     }
-
-                    index = (index + 1) % self.entries.capacity();
                 }
+            } else if entry.key == Some(key.clone()) {
+                return Some(entry.clone());
             }
-            _ => None,
+
+            index = (index + 1) % self.entries.capacity();
         }
     }
 
-    pub fn get(&self, key: &Obj) -> Option<Value> {
+    pub fn get(&self, key: &StringObj) -> Option<Value> {
         self.find_entry(key).map(|entry| entry.value)
     }
 }

@@ -3,18 +3,18 @@ use std::time::{Duration, SystemTime, UNIX_EPOCH};
 use super::chunk::{Chunk, OpCode};
 use super::compiler::compile;
 // use super::table::Table;
-type Table = std::collections::HashMap<Obj, Value>;
-use super::object::{Obj, NativeFn};
+type Table = std::collections::HashMap<StringObj, Value>;
+use super::object::{Obj, StringObj, Closure, NativeFunction, NativeFn};
 use super::value::{HashableF64, Value};
 
 struct CallFrame {
-    closure: Box<Obj>,
+    closure: Box<Closure>,
     ip: usize,
     slot: usize,
 }
 
 impl CallFrame {
-    pub fn new(closure: Box<Obj>, slot: usize) -> Self {
+    pub fn new(closure: Box<Closure>, slot: usize) -> Self {
         CallFrame {
             closure,
             slot,
@@ -23,15 +23,7 @@ impl CallFrame {
     }
 
     pub fn chunk(&mut self) -> &mut Chunk {
-        match *self.closure.as_mut() {
-            Obj::Closure { ref mut function, .. } => {
-                match *function.as_mut() {
-                    Obj::Function { ref mut chunk, .. } => chunk,
-                    _ => unreachable!(),
-                }
-            }
-            _ => unreachable!(),
-        }
+        &mut self.closure.function.chunk
     }
 
     fn read_byte(&mut self) -> u8 {
@@ -83,16 +75,13 @@ macro_rules! runtime_error {
         eprintln!($format, $($args, )*);
 
         for frame in $vm.frames.iter().rev() {
-            if let Obj::Closure { function, .. } = frame.closure.as_ref() {
-                if let Obj::Function { chunk, name, .. } = function.as_ref() {
-                    let instruction = frame.ip - 1;
-                    eprint!("[line {}] in ", chunk.get_line(instruction));
-                    if let Some(name) = name {
-                        eprintln!("{}()", name);
-                    } else {
-                        eprintln!("script");
-                    }
-                }
+            let function = &frame.closure.function;
+            let instruction = frame.ip - 1;
+            eprint!("[line {}] in ", &function.chunk.get_line(instruction));
+            if let Some(name) = &function.name {
+                eprintln!("{}()", name);
+            } else {
+                eprintln!("script");
             }
         }
 
@@ -126,17 +115,13 @@ impl VM {
     pub fn interpret(&mut self, source: &str) -> InterpretResult {
         let function = compile(source);
         if let Some(function) = function {
-            if let Obj::Function { .. } = function {
-                let frame = CallFrame::new(function.clone().into(), 0);
-                self.frames.push(frame);
-            } else {
-                unreachable!();
-            }
+            let closure = Closure::new(function.clone().into());
+            let frame = CallFrame::new(closure.clone().into(), 0);
+            self.frames.push(frame);
 
-            self.push(Value::Obj(function.clone()));
-            let closure = Obj::new_closure(function.clone().into());
+            self.push(Value::Obj(Obj::Function(function.clone().into())));
             self.pop();
-            self.push(Value::Obj(closure.clone()));
+            self.push(Value::Obj(Obj::Closure(closure.clone().into())));
             self.call(closure, 0);
         } else {
             return InterpretResult::CompileError;
@@ -181,7 +166,7 @@ impl VM {
                     self.stack[slot] = value;
                 }
                 Ok(OpCode::GetGlobal) => {
-                    if let Value::Obj(name) = self.current_frame().read_constant() {
+                    if let Value::Obj(Obj::String(name)) = self.current_frame().read_constant() {
                         if let Some(value) = self.globals.get(&name) {
                             self.push(value.clone());
                         } else {
@@ -191,16 +176,16 @@ impl VM {
                     }
                 }
                 Ok(OpCode::DefineGlobal) => {
-                    if let Value::Obj(name) = self.current_frame().read_constant() {
+                    if let Value::Obj(Obj::String(name)) = self.current_frame().read_constant() {
                         let value = self.peek(0);
-                        self.globals.insert(name, value);
+                        self.globals.insert(*name, value);
                         self.pop();
                     }
                 }
                 Ok(OpCode::SetGlobal) => {
-                    if let Value::Obj(name) = self.current_frame().read_constant() {
+                    if let Value::Obj(Obj::String(name)) = self.current_frame().read_constant() {
                         let value = self.peek(0);
-                        if self.globals.insert(name.clone(), value).is_none() {
+                        if self.globals.insert(*name.clone(), value).is_none() {
                             self.globals.remove(&name);
                             runtime_error!(self, "Undefined variable '{}'.", name);
                             return InterpretResult::RuntimeError;
@@ -219,8 +204,8 @@ impl VM {
                         (Value::Number(b), Value::Number(a)) => {
                             self.push(Value::Number(a + b));
                         }
-                        (Value::Obj(Obj::String{ string: b, .. }), Value::Obj(Obj::String{ string: a, .. })) => {
-                            let value = Value::Obj(self.allocate_string(a + &b));
+                        (Value::Obj(Obj::String(b)), Value::Obj(Obj::String(a))) => {
+                            let value = Value::Obj(Obj::String(self.allocate_string(a.string + &b.string).into()));
                             self.push(value);
                         }
                         (_, _) => {
@@ -269,9 +254,9 @@ impl VM {
                     }
                 }
                 Ok(OpCode::Closure) => {
-                    if let Value::Obj(function) = self.current_frame().read_constant() {
-                        let closure = Obj::new_closure(function.into());
-                        self.push(Value::Obj(closure));
+                    if let Value::Obj(Obj::Function(function)) = self.current_frame().read_constant() {
+                        let closure = Closure::new(function);
+                        self.push(Value::Obj(Obj::Closure(closure.into())));
                     }
                 }
                 Ok(OpCode::Return) => {
@@ -311,39 +296,31 @@ impl VM {
         self.frames.last_mut().unwrap()
     }
 
-    fn call(&mut self, closure: Obj, arg_count: u8) -> bool {
-        if let Obj::Closure { ref function, .. } = closure {
-            if let Obj::Function { arity, .. } = **function {
-                if arg_count != arity {
-                    runtime_error!(self, "Expected {} argument(s) but got {}.", arity, arg_count);
-                    return false;
-                }
-
-                if self.frames.len() > 256 {
-                    runtime_error!(self, "Stack overflow");
-                    return false;
-                }
-
-                let frame = CallFrame::new(
-                    closure.into(),
-                    self.stack.len() - arg_count as usize - 1
-                );
-                self.frames.push(frame);
-                true
-            } else {
-                false
-            }
-        } else {
-            false
+    fn call(&mut self, closure: Closure, arg_count: u8) -> bool {
+        if arg_count != closure.function.arity {
+            runtime_error!(self, "Expected {} argument(s) but got {}.", closure.function.arity, arg_count);
+            return false;
         }
+
+        if self.frames.len() > 256 {
+            runtime_error!(self, "Stack overflow");
+            return false;
+        }
+
+        let frame = CallFrame::new(
+            closure.into(),
+            self.stack.len() - arg_count as usize - 1
+        );
+        self.frames.push(frame);
+        true
     }
 
     fn call_value(&mut self, callee: Value, arg_count: u8) -> bool {
         if let Value::Obj(callee) = callee {
             match callee {
-                Obj::Closure { .. } => self.call(callee, arg_count),
-                Obj::NativeFunction { function, .. } => {
-                    let result = function(arg_count, &[self.peek(arg_count as usize)]);
+                Obj::Closure(closure) => self.call(*closure, arg_count),
+                Obj::NativeFunction(native_function) => {
+                    let result = (native_function.function)(arg_count, &[self.peek(arg_count as usize)]);
                     let new_stack_size = self.stack.len() - arg_count as usize + 1;
                     self.stack.truncate(new_stack_size);
                     self.push(result);
@@ -360,16 +337,16 @@ impl VM {
         }
     }
 
-    fn allocate_string(&mut self, string: String) -> Obj {
-        let string = Obj::new_string(string);
+    fn allocate_string(&mut self, string: String) -> StringObj {
+        let string = StringObj::new(string);
         self.strings.insert(string.clone(), Value::Nil);
         string
     }
 
     fn define_native(&mut self, name: &str, function: NativeFn) {
-        let name = Obj::new_string(name.to_string());
-        let function = Value::Obj(Obj::new_native(function));
-        self.push(Value::Obj(name.clone()));
+        let name = StringObj::new(name.to_string());
+        let function = Value::Obj(Obj::NativeFunction(NativeFunction::new(function).into()));
+        self.push(Value::Obj(Obj::String(name.clone().into())));
         self.push(function.clone());
         self.globals.insert(name, function);
         self.pop();

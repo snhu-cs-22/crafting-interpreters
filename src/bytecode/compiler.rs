@@ -2,7 +2,7 @@ use std::mem;
 
 use super::scanner::{Scanner, Token, TokenType};
 use super::chunk::{Chunk, OpCode};
-use super::object::Obj;
+use super::object::{Obj, Function, StringObj};
 use super::value::Value;
 use crate::impl_convert_enum_u8;
 
@@ -30,7 +30,7 @@ impl Precedence {
 
 impl_convert_enum_u8!(Precedence, Primary);
 
-pub fn compile(source: &str) -> Option<Obj> {
+pub fn compile(source: &str) -> Option<Function> {
     let mut parser = Parser {
         current: Default::default(),
         previous: Default::default(),
@@ -74,7 +74,7 @@ enum FunctionType {
 
 struct Compiler {
     enclosing: Option<Box<Compiler>>,
-    function: Option<Box<Obj>>,
+    function: Option<Box<Function>>,
     r#type: FunctionType,
 
     locals: Vec<Local>,
@@ -91,7 +91,7 @@ impl Compiler {
             scope_depth: 0,
         };
 
-        result.function = Some(Obj::new_function().into());
+        result.function = Some(Function::new().into());
         result.locals.push(
             Local {
                 depth: Some(0),
@@ -104,10 +104,10 @@ impl Compiler {
 
     pub fn push_new(&mut self, r#type: FunctionType, name: &Token) {
         let function = (r#type != FunctionType::Script).then_some(
-            Obj::Function {
+            Function {
                 arity: 0,
                 chunk: Chunk::new(),
-                name: Some(Obj::new_string(name.lexeme.to_string()).into()),
+                name: Some(StringObj::new(name.lexeme.to_string()).into()),
             }.into()
         );
 
@@ -138,11 +138,7 @@ pub struct Parser<'a> {
 
 impl Parser<'_> {
     fn current_chunk(&mut self) -> &mut Chunk {
-        let function = self.compiler.function.as_mut().unwrap().as_mut();
-        match function {
-            Obj::Function { ref mut chunk, .. } => chunk,
-            _ => unreachable!(),
-        }
+        &mut self.compiler.function.as_mut().unwrap().chunk
     }
 
     fn advance(&mut self) {
@@ -184,7 +180,7 @@ impl Parser<'_> {
         self.current_chunk().write(byte, line);
     }
 
-    fn end_compiler(&mut self) -> Obj {
+    fn end_compiler(&mut self) -> Function {
         self.emit_return();
         let function = *self.compiler.function.clone().unwrap();
 
@@ -253,7 +249,7 @@ impl Parser<'_> {
     }
 
     fn string(&mut self, _can_assign: bool) {
-        self.emit_constant(Value::Obj(Obj::new_string(self.previous.lexeme[1..self.previous.lexeme.len() - 1].to_string())));
+        self.emit_constant(Value::Obj(Obj::String(StringObj::new(self.previous.lexeme[1..self.previous.lexeme.len() - 1].to_string()).into())));
     }
 
     fn named_variable(&mut self, name: Token, can_assign: bool) {
@@ -325,7 +321,7 @@ impl Parser<'_> {
     }
 
     fn identifier_constant(&mut self, name: &Token) -> u8 {
-        self.make_constant(Value::Obj(Obj::new_string(name.lexeme.to_string())))
+        self.make_constant(Value::Obj(Obj::String(StringObj::new(name.lexeme.to_string()).into())))
     }
 
     #[inline]
@@ -516,12 +512,11 @@ impl Parser<'_> {
         self.consume(TokenType::LeftParen, "Expect '(' after function name.");
         if !self.check(TokenType::RightParen) {
             loop {
-                if let Obj::Function { ref mut arity, .. } = **self.compiler.function.as_mut().unwrap() {
-                    if let Some(value) = arity.checked_add(1) {
-                        *arity = value;
-                    } else {
-                        self.error_at_current("Can't have more than 255 parameters.");
-                    }
+                let arity = &mut self.compiler.function.as_mut().unwrap().arity;
+                if let Some(value) = arity.checked_add(1) {
+                    *arity = value;
+                } else {
+                    self.error_at_current("Can't have more than 255 parameters.");
                 }
 
                 let constant = self.parse_variable("Expect parameter name.");
@@ -537,7 +532,7 @@ impl Parser<'_> {
         self.block();
 
         let function = self.end_compiler();
-        let constant = self.make_constant(Value::Obj(function));
+        let constant = self.make_constant(Value::Obj(Obj::Function(function.into())));
         self.emit_bytes(OpCode::Closure.into(), constant);
     }
 
